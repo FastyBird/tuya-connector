@@ -2,6 +2,8 @@
 
 namespace Tests\Cases;
 
+use FastyBird\TuyaConnector\Hydrators;
+use FastyBird\TuyaConnector\Schemas;
 use Tester\Assert;
 
 require_once __DIR__ . '/../../../bootstrap.php';
@@ -17,7 +19,11 @@ final class ServicesTest extends BaseTestCase
 	{
 		$container = $this->createContainer();
 
-		Assert::true(true);
+		Assert::notNull($container->getByType(Hydrators\TuyaConnectorHydrator::class));
+		Assert::notNull($container->getByType(Hydrators\TuyaDeviceHydrator::class));
+
+		Assert::notNull($container->getByType(Schemas\TuyaConnectorSchema::class));
+		Assert::notNull($container->getByType(Schemas\TuyaDeviceSchema::class));
 	}
 
 }

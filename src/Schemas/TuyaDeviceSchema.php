@@ -16,8 +16,8 @@
 namespace FastyBird\TuyaConnector\Schemas;
 
 use FastyBird\DevicesModule\Schemas as DevicesModuleSchemas;
-use FastyBird\TuyaConnector\Entities;
 use FastyBird\Metadata\Types as MetadataTypes;
+use FastyBird\TuyaConnector\Entities;
 
 /**
  * Tuya connector entity schema

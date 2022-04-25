@@ -41,10 +41,7 @@ from fastybird_metadata.types import ControlAction
 from kink import inject
 
 # Library libs
-from fastybird_tuya_connector.entities import (
-    TuyaConnectorEntity,
-    TuyaDeviceEntity,
-)
+from fastybird_tuya_connector.entities import TuyaConnectorEntity, TuyaDeviceEntity
 from fastybird_tuya_connector.logger import Logger
 
 

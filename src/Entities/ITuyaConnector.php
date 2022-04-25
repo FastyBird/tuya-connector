@@ -16,7 +16,6 @@
 namespace FastyBird\TuyaConnector\Entities;
 
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
-use FastyBird\TuyaConnector\Types;
 
 /**
  * Tuya connector entity interface
