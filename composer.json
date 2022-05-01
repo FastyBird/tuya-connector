@@ -45,8 +45,7 @@
     "nette/bootstrap": "^3.1",
     "nette/di": "^3.0",
     "psr/log": "^1.1",
-    "ramsey/uuid": "^4.2",
-    "react/socket": "^1.9"
+    "ramsey/uuid": "^4.2"
   },
 
   "require-dev" : {

@@ -27,6 +27,7 @@ import logging
 from kink import di
 
 # Library libs
+from fastybird_tuya_connector.clients.discovery import DiscoveryClient
 from fastybird_tuya_connector.connector import TuyaConnector
 from fastybird_tuya_connector.entities import TuyaConnectorEntity
 from fastybird_tuya_connector.logger import Logger
@@ -46,9 +47,15 @@ def create_connector(
     else:
         connector_logger = logger
 
+    di[DiscoveryClient] = DiscoveryClient(
+        logger=logger,
+    )
+    di["tuya-connector_discovery-client"] = di[DiscoveryClient]
+
     # Main connector service
     connector_service = TuyaConnector(
         connector_id=connector.id,
+        discovery_client=di[DiscoveryClient],
         logger=connector_logger,
     )
     di[TuyaConnector] = connector_service

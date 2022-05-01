@@ -41,8 +41,24 @@ from fastybird_metadata.types import ControlAction
 from kink import inject
 
 # Library libs
+from fastybird_tuya_connector.clients.device import DeviceClient
+from fastybird_tuya_connector.clients.discovery import DiscoveryClient
 from fastybird_tuya_connector.entities import TuyaConnectorEntity, TuyaDeviceEntity
 from fastybird_tuya_connector.logger import Logger
+from fastybird_tuya_connector.types import DeviceStatusType
+
+
+def on_status(data: dict, status_type: DeviceStatusType) -> None:
+    """Device published status"""
+    print("STATUS")
+    print(status_type)
+    print(data)
+
+
+def on_connection(value: bool) -> None:
+    """Connected to device"""
+    print("CONNECTION")
+    print(value)
 
 
 @inject(alias=IConnector)
@@ -57,10 +73,15 @@ class TuyaConnector(IConnector):  # pylint: disable=too-many-instance-attributes
     """
 
     __stopped: bool = False
+    __process_discovery: bool = False
 
     __connector_id: uuid.UUID
 
+    __discovery_client: DiscoveryClient
+
     __logger: Union[Logger, logging.Logger]
+
+    __device: DeviceClient
 
     # -----------------------------------------------------------------------------
 
@@ -74,9 +95,11 @@ class TuyaConnector(IConnector):  # pylint: disable=too-many-instance-attributes
     def __init__(  # pylint: disable=too-many-arguments
         self,
         connector_id: uuid.UUID,
+        discovery_client: DiscoveryClient,
         logger: Union[Logger, logging.Logger] = logging.getLogger("dummy"),
     ) -> None:
         self.__connector_id = connector_id
+        self.__discovery_client = discovery_client
 
         self.__logger = logger
 
@@ -187,9 +210,21 @@ class TuyaConnector(IConnector):  # pylint: disable=too-many-instance-attributes
 
     def start(self) -> None:
         """Start connector services"""
+        # self.__discovery_client.start()
+
         self.__logger.info("Connector has been started")
 
         self.__stopped = False
+
+        self.__device = DeviceClient(
+            device_identifier="402675772462ab280dff",
+            local_key="46664614c91aefae",
+            ip_address="192.168.1.134",
+            on_connection=on_connection,
+            on_status=on_status,
+            logger=self.__logger,
+        )
+        # self.__device.start()
 
         # Register connector coroutine
         asyncio.ensure_future(self.__worker())
@@ -198,6 +233,9 @@ class TuyaConnector(IConnector):  # pylint: disable=too-many-instance-attributes
 
     def stop(self) -> None:
         """Close all opened connections & stop connector"""
+        self.__discovery_client.stop()
+        # self.__device.stop_client()
+
         self.__logger.info("Connector has been stopped")
 
         self.__stopped = True
@@ -235,5 +273,25 @@ class TuyaConnector(IConnector):  # pylint: disable=too-many-instance-attributes
             if self.__stopped and self.has_unfinished_tasks():
                 return
 
+            # Devices discovery is turned on...
+            if self.__process_discovery:
+                # ...turn on discovery client if not turned on...
+                if not self.__discovery_client.is_connected():
+                    self.__discovery_client.start()
+
+                # ...and proces devices discovery
+                self.__discovery_client.handle()
+
+            else:
+                # If discovery is still active...
+                if not self.__discovery_client.is_connected():
+                    # ...proces discovery shutdown
+                    self.__discovery_client.stop()
+
+                self.__device.handle()
+                # data = self.__device.read_states()
+                # print(data)
+
             # Be gentle to server
             await asyncio.sleep(0.01)
+            # await asyncio.sleep(1)
