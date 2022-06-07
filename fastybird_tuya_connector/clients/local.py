@@ -125,7 +125,7 @@ class LocalDeviceClient:  # pylint: disable=too-few-public-methods
             )
 
             if result is not None:
-                self.__local_devices[device_record.id.__str__()] = result
+                self.__local_devices[str(device_record.id)] = result
 
     # -----------------------------------------------------------------------------
 
@@ -310,7 +310,7 @@ class LocalDeviceItem(asyncio.Protocol):  # pylint: disable=too-many-instance-at
 
             while True:
                 try:
-                    self.__logger.debug("(%s) PING", self.__id.__str__())
+                    self.__logger.debug("(%s) PING", str(self.__id))
 
                     self.__send_request(command=CMD_TYPE.HEART_BEAT, sequence_nr=self.__HEARTBEAT_SEQ_NO)
 
@@ -422,7 +422,7 @@ class LocalDeviceItem(asyncio.Protocol):  # pylint: disable=too-many-instance-at
                 sem.release()
 
             elif reply.get("cmd") == CMD_TYPE.HEART_BEAT:
-                self.__logger.debug("(%s) PONG", self.__id.__str__())
+                self.__logger.debug("(%s) PONG", str(self.__id))
 
             elif reply.get("cmd") == CMD_TYPE.STATUS:
                 devices_data = reply.get("data")
@@ -517,7 +517,7 @@ class LocalDeviceItem(asyncio.Protocol):  # pylint: disable=too-many-instance-at
 
         self.__logger.debug(
             "(%s) sending msg (seq %s): [%x:%s] payload: [%s]",
-            self.__id.__str__(),
+            str(self.__id),
             payload_sequence_nr,
             command,
             CMD_TYPE(command).name,

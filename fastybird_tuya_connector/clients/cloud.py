@@ -215,8 +215,8 @@ class TuyaCloudClient:  # pylint: disable=too-many-instance-attributes,too-few-p
 
             for device_record in self.__devices_registry:
                 if (
-                    device_record.id.__str__() not in self.__last_reading_timestamp
-                    or (time.time() - self.__last_reading_timestamp[device_record.id.__str__()])
+                    str(device_record.id) not in self.__last_reading_timestamp
+                    or (time.time() - self.__last_reading_timestamp[str(device_record.id)])
                     >= self.__READ_STATE_DELAY
                 ):
                     try:
@@ -240,7 +240,7 @@ class TuyaCloudClient:  # pylint: disable=too-many-instance-attributes,too-few-p
 
                         self.__consumer.append(entity=entity)
 
-                        self.__last_reading_timestamp[device_record.id.__str__()] = time.time()
+                        self.__last_reading_timestamp[str(device_record.id)] = time.time()
 
                         break
 

@@ -266,7 +266,7 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Creating new device",
                 extra={
                     "device": {
-                        "id": device.id.__str__(),
+                        "id": str(device.id),
                     },
                 },
             )
@@ -278,7 +278,7 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Updating existing device",
                 extra={
                     "device": {
-                        "id": device.id.__str__(),
+                        "id": str(device.id),
                     },
                 },
             )
@@ -308,10 +308,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Creating new device attribute",
                 extra={
                     "device": {
-                        "id": device_attribute.device.id.__str__(),
+                        "id": str(device_attribute.device.id),
                     },
                     "attribute": {
-                        "id": device_attribute.id.__str__(),
+                        "id": str(device_attribute.id),
                     },
                 },
             )
@@ -326,10 +326,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Updating existing device attribute",
                 extra={
                     "device": {
-                        "id": device_attribute.device.id.__str__(),
+                        "id": str(device_attribute.device.id),
                     },
                     "attribute": {
-                        "id": device_attribute.id.__str__(),
+                        "id": str(device_attribute.id),
                     },
                 },
             )
@@ -358,7 +358,7 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             # Define relation between device & property
             property_data["device_id"] = event.record.device_id
 
-            if event.record.type.__eq__(DeviceProperty.STATE):
+            if event.record.type == DeviceProperty.STATE:
                 del property_data["value"]
 
                 device_property = self.__devices_properties_manager.create(
@@ -376,10 +376,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Creating new device property",
                 extra={
                     "device": {
-                        "id": device_property.device.id.__str__(),
+                        "id": str(device_property.device.id),
                     },
                     "property": {
-                        "id": device_property.id.__str__(),
+                        "id": str(device_property.id),
                     },
                 },
             )
@@ -388,7 +388,7 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             if device_property.name is not None:
                 property_data["name"] = device_property.name
 
-            if event.record.type.__eq__(DeviceProperty.STATE):
+            if event.record.type == DeviceProperty.STATE:
                 del property_data["value"]
 
             device_property = self.__devices_properties_manager.update(
@@ -400,10 +400,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Updating existing device property",
                 extra={
                     "device": {
-                        "id": device_property.device.id.__str__(),
+                        "id": str(device_property.device.id),
                     },
                     "property": {
-                        "id": device_property.id.__str__(),
+                        "id": str(device_property.id),
                     },
                 },
             )
@@ -435,10 +435,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Creating new IO channel",
                 extra={
                     "device": {
-                        "id": channel.device.id.__str__(),
+                        "id": str(channel.device.id),
                     },
                     "channel": {
-                        "id": channel.id.__str__(),
+                        "id": str(channel.id),
                     },
                 },
             )
@@ -475,13 +475,13 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Creating new channel property",
                 extra={
                     "device": {
-                        "id": channel_property.channel.device.id.__str__(),
+                        "id": str(channel_property.channel.device.id),
                     },
                     "channel": {
-                        "id": channel_property.channel.id.__str__(),
+                        "id": str(channel_property.channel.id),
                     },
                     "property": {
-                        "id": channel_property.id.__str__(),
+                        "id": str(channel_property.id),
                     },
                 },
             )
@@ -499,13 +499,13 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                 "Updating existing channel property",
                 extra={
                     "device": {
-                        "id": channel_property.channel.device.id.__str__(),
+                        "id": str(channel_property.channel.device.id),
                     },
                     "channel": {
-                        "id": channel_property.channel.id.__str__(),
+                        "id": str(channel_property.channel.id),
                     },
                     "property": {
-                        "id": channel_property.id.__str__(),
+                        "id": str(channel_property.id),
                     },
                 },
             )
@@ -522,8 +522,8 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             self.__logger.warning(
                 "Device attribute couldn't be found in database",
                 extra={
-                    "device": {"id": event.updated_record.device_id.__str__()},
-                    "attribute": {"id": event.updated_record.id.__str__()},
+                    "device": {"id": str(event.updated_record.device_id)},
+                    "attribute": {"id": str(event.updated_record.id)},
                 },
             )
             return
@@ -539,10 +539,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             "Updating existing device attribute",
             extra={
                 "device": {
-                    "id": device_attribute.device.id.__str__(),
+                    "id": str(device_attribute.device.id),
                 },
                 "attribute": {
-                    "id": device_attribute.id.__str__(),
+                    "id": str(device_attribute.id),
                 },
             },
         )
@@ -559,8 +559,8 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             self.__logger.warning(
                 "Device property couldn't be found in database",
                 extra={
-                    "device": {"id": event.updated_record.device_id.__str__()},
-                    "property": {"id": event.updated_record.id.__str__()},
+                    "device": {"id": str(event.updated_record.device_id)},
+                    "property": {"id": str(event.updated_record.id)},
                 },
             )
             return
@@ -599,13 +599,13 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                     "Creating new device property state",
                     extra={
                         "device": {
-                            "id": device_property.device.id.__str__(),
+                            "id": str(device_property.device.id),
                         },
                         "property": {
-                            "id": device_property.id.__str__(),
+                            "id": str(device_property.id),
                         },
                         "state": {
-                            "id": property_state.id.__str__(),
+                            "id": str(property_state.id),
                             "actual_value": property_state.actual_value,
                             "expected_value": property_state.expected_value,
                             "pending": property_state.pending,
@@ -631,13 +631,13 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                     "Updating existing device property state",
                     extra={
                         "device": {
-                            "id": device_property.device.id.__str__(),
+                            "id": str(device_property.device.id),
                         },
                         "property": {
-                            "id": device_property.id.__str__(),
+                            "id": str(device_property.id),
                         },
                         "state": {
-                            "id": property_state.id.__str__(),
+                            "id": str(property_state.id),
                             "actual_value": property_state.actual_value,
                             "expected_value": property_state.expected_value,
                             "pending": property_state.pending,
@@ -664,10 +664,10 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                     "Updating existing device property",
                     extra={
                         "device": {
-                            "id": device_property.device.id.__str__(),
+                            "id": str(device_property.device.id),
                         },
                         "property": {
-                            "id": device_property.id.__str__(),
+                            "id": str(device_property.id),
                         },
                     },
                 )
@@ -684,7 +684,7 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
             self.__logger.warning(
                 "Channel property couldn't be found in database",
                 extra={
-                    "property": {"id": event.updated_record.id.__str__()},
+                    "property": {"id": str(event.updated_record.id)},
                 },
             )
             return
@@ -734,16 +734,16 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                     "Creating new channel property state",
                     extra={
                         "device": {
-                            "id": channel_property.channel.device.id.__str__(),
+                            "id": str(channel_property.channel.device.id),
                         },
                         "channel": {
-                            "id": channel_property.channel.id.__str__(),
+                            "id": str(channel_property.channel.id),
                         },
                         "property": {
-                            "id": channel_property.id.__str__(),
+                            "id": str(channel_property.id),
                         },
                         "state": {
-                            "id": property_state.id.__str__(),
+                            "id": str(property_state.id),
                             "actual_value": property_state.actual_value,
                             "expected_value": property_state.expected_value,
                             "pending": property_state.pending,
@@ -769,16 +769,16 @@ class EventsListener:  # pylint: disable=too-many-instance-attributes
                     "Updating existing channel property state",
                     extra={
                         "device": {
-                            "id": channel_property.channel.device.id.__str__(),
+                            "id": str(channel_property.channel.device.id),
                         },
                         "channel": {
-                            "id": channel_property.channel.id.__str__(),
+                            "id": str(channel_property.channel.id),
                         },
                         "property": {
-                            "id": channel_property.id.__str__(),
+                            "id": str(channel_property.id),
                         },
                         "state": {
-                            "id": property_state.id.__str__(),
+                            "id": str(property_state.id),
                             "actual_value": property_state.actual_value,
                             "expected_value": property_state.expected_value,
                             "pending": property_state.pending,

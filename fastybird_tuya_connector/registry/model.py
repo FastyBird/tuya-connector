@@ -105,7 +105,7 @@ class DevicesRegistry:  # pylint: disable=too-many-instance-attributes
         items = self.__items.copy()
 
         return next(
-            iter([record for record in items.values() if device_id.__eq__(record.id)]),
+            iter([record for record in items.values() if device_id == record.id]),
             None,
         )
 
@@ -132,7 +132,7 @@ class DevicesRegistry:  # pylint: disable=too-many-instance-attributes
             device_name=device_name,
         )
 
-        self.__items[device_record.id.__str__()] = device_record
+        self.__items[str(device_record.id)] = device_record
 
         return device_record
 
@@ -177,9 +177,9 @@ class DevicesRegistry:  # pylint: disable=too-many-instance-attributes
         items = self.__items.copy()
 
         for record in items.values():
-            if device_id.__eq__(record.id):
+            if device_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                     self.__data_points_registry.reset(device_id=record.id)
                     self.__attributes_registry.reset(device_id=record.id)
@@ -229,7 +229,7 @@ class DevicesRegistry:  # pylint: disable=too-many-instance-attributes
 
         for record in items.values():
             if record.id == device.id:
-                self.__items[device.id.__str__()] = device
+                self.__items[str(device.id)] = device
 
                 return True
 
@@ -306,7 +306,7 @@ class DataPointsRegistry:
         items = self.__items.copy()
 
         return next(
-            iter([record for record in items.values() if dp_id.__eq__(record.id)]),
+            iter([record for record in items.values() if dp_id == record.id]),
             None,
         )
 
@@ -318,7 +318,7 @@ class DataPointsRegistry:
 
         return next(
             iter(
-                [record for record in items.values() if device_id.__eq__(record.device_id) and record.index == dp_index]
+                [record for record in items.values() if device_id == record.device_id and record.index == dp_index]
             ),
             None,
         )
@@ -334,7 +334,7 @@ class DataPointsRegistry:
                 [
                     record
                     for record in items.values()
-                    if device_id.__eq__(record.device_id) and record.identifier == dp_identifier
+                    if device_id == record.device_id and record.identifier == dp_identifier
                 ]
             ),
             None,
@@ -346,7 +346,7 @@ class DataPointsRegistry:
         """Find data points in registry by device unique identifier"""
         items = self.__items.copy()
 
-        return list(iter([record for record in items.values() if device_id.__eq__(record.device_id)]))
+        return list(iter([record for record in items.values() if device_id == record.device_id]))
 
     # -----------------------------------------------------------------------------
 
@@ -410,7 +410,7 @@ class DataPointsRegistry:
             except (NotImplementedError, AttributeError):
                 pass
 
-        self.__items[dp_record.id.__str__()] = dp_record
+        self.__items[str(dp_record.id)] = dp_record
 
         return dp_record
 
@@ -464,9 +464,9 @@ class DataPointsRegistry:
         items = self.__items.copy()
 
         for record in items.values():
-            if dp_id.__eq__(record.id):
+            if dp_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                 except KeyError:
                     pass
@@ -481,7 +481,7 @@ class DataPointsRegistry:
 
         if device_id is not None:
             for record in items.values():
-                if device_id.__eq__(record.device_id):
+                if device_id == record.device_id:
                     self.remove(dp_id=record.id)
 
         else:
@@ -593,7 +593,7 @@ class DataPointsRegistry:
 
         for record in items.values():
             if record.id == data_point.id:
-                self.__items[data_point.id.__str__()] = data_point
+                self.__items[str(data_point.id)] = data_point
 
                 return True
 
@@ -662,7 +662,7 @@ class PropertiesRegistry:
         items = self.__items.copy()
 
         return next(
-            iter([record for record in items.values() if property_id.__eq__(record.id)]),
+            iter([record for record in items.values() if property_id == record.id]),
             None,
         )
 
@@ -677,7 +677,7 @@ class PropertiesRegistry:
                 [
                     record
                     for record in items.values()
-                    if device_id.__eq__(record.device_id) and record.type == property_type
+                    if device_id == record.device_id and record.type == property_type
                 ]
             ),
             None,
@@ -689,7 +689,7 @@ class PropertiesRegistry:
         """Get all device properties"""
         items = self.__items.copy()
 
-        return list(iter([record for record in items.values() if device_id.__eq__(record.device_id)]))
+        return list(iter([record for record in items.values() if device_id == record.device_id]))
 
     # -----------------------------------------------------------------------------
 
@@ -716,7 +716,7 @@ class PropertiesRegistry:
             property_value=property_value,
         )
 
-        self.__items[property_record.id.__str__()] = property_record
+        self.__items[str(property_record.id)] = property_record
 
         return property_record
 
@@ -752,9 +752,9 @@ class PropertiesRegistry:
         items = self.__items.copy()
 
         for record in items.values():
-            if property_id.__eq__(record.id):
+            if property_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                 except KeyError:
                     pass
@@ -769,7 +769,7 @@ class PropertiesRegistry:
 
         if device_id is not None:
             for record in items.values():
-                if device_id.__eq__(record.device_id):
+                if device_id == record.device_id:
                     try:
                         self.remove(property_id=record.id)
 
@@ -815,7 +815,7 @@ class PropertiesRegistry:
 
         for record in items.values():
             if record.id == device_property.id:
-                self.__items[device_property.id.__str__()] = device_property
+                self.__items[str(device_property.id)] = device_property
 
                 return True
 
@@ -853,7 +853,7 @@ class AttributesRegistry:
         items = self.__items.copy()
 
         return next(
-            iter([record for record in items.values() if attribute_id.__eq__(record.id)]),
+            iter([record for record in items.values() if attribute_id == record.id]),
             None,
         )
 
@@ -868,7 +868,7 @@ class AttributesRegistry:
                 [
                     record
                     for record in items.values()
-                    if device_id.__eq__(record.device_id) and record.type == attribute_type
+                    if device_id == record.device_id and record.type == attribute_type
                 ]
             ),
             None,
@@ -880,7 +880,7 @@ class AttributesRegistry:
         """Get all device attributes"""
         items = self.__items.copy()
 
-        return list(iter([record for record in items.values() if device_id.__eq__(record.device_id)]))
+        return list(iter([record for record in items.values() if device_id == record.device_id]))
 
     # -----------------------------------------------------------------------------
 
@@ -907,7 +907,7 @@ class AttributesRegistry:
             attribute_value=attribute_value,
         )
 
-        self.__items[attribute_record.id.__str__()] = attribute_record
+        self.__items[str(attribute_record.id)] = attribute_record
 
         return attribute_record
 
@@ -943,9 +943,9 @@ class AttributesRegistry:
         items = self.__items.copy()
 
         for record in items.values():
-            if attribute_id.__eq__(record.id):
+            if attribute_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                 except KeyError:
                     pass
@@ -960,7 +960,7 @@ class AttributesRegistry:
 
         if device_id is not None:
             for record in items.values():
-                if device_id.__eq__(record.device_id):
+                if device_id == record.device_id:
                     try:
                         self.remove(attribute_id=record.id)
 
@@ -1006,7 +1006,7 @@ class AttributesRegistry:
 
         for record in items.values():
             if record.id == attribute.id:
-                self.__items[attribute.id.__str__()] = attribute
+                self.__items[str(attribute.id)] = attribute
 
                 return True
 
@@ -1080,9 +1080,9 @@ class DiscoveredDevicesRegistry:
         items = self.__items.copy()
 
         for record in items.values():
-            if device_id.__eq__(record.id):
+            if device_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                     self.__data_points_registry.reset(device_id=record.id)
 
@@ -1364,9 +1364,9 @@ class TuyaCloudDevicesRegistry:
         items = self.__items.copy()
 
         for record in items.values():
-            if device_id.__eq__(record.id):
+            if device_id == record.id:
                 try:
-                    del self.__items[record.id.__str__()]
+                    del self.__items[str(record.id)]
 
                     self.__data_points_registry.reset(device_id=record.id)
 
