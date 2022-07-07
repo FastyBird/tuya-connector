@@ -46,7 +46,7 @@ class TuyaDevice extends DevicesModuleEntities\Devices\Device implements ITuyaDe
 	/**
 	 * {@inheritDoc}
 	 */
-	public function getSource()
+	public function getSource(): MetadataTypes\ModuleSourceType|MetadataTypes\PluginSourceType|MetadataTypes\ConnectorSourceType
 	{
 		return MetadataTypes\ConnectorSourceType::get(MetadataTypes\ConnectorSourceType::SOURCE_CONNECTOR_TUYA);
 	}
