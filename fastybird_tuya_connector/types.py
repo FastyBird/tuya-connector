@@ -22,7 +22,10 @@ Tuya connector types module
 from enum import unique
 
 # Library dependencies
-from fastybird_metadata.devices_module import DeviceAttributeIdentifier, DevicePropertyIdentifier
+from fastybird_metadata.devices_module import (
+    DeviceAttributeIdentifier,
+    DevicePropertyIdentifier,
+)
 from fastybird_metadata.enum import ExtendedEnum
 
 CONNECTOR_NAME: str = "tuya"
