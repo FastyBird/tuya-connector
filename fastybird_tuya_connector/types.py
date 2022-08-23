@@ -22,7 +22,7 @@ Tuya connector types module
 from enum import unique
 
 # Library dependencies
-from fastybird_metadata.devices_module import DeviceAttributeName, DevicePropertyName
+from fastybird_metadata.devices_module import DeviceAttributeIdentifier, DevicePropertyIdentifier
 from fastybird_metadata.enum import ExtendedEnum
 
 CONNECTOR_NAME: str = "tuya"
@@ -103,8 +103,8 @@ class DeviceProperty(ExtendedEnum):
     @author         Adam Kadlec <adam.kadlec@fastybird.com>
     """
 
-    IP_ADDRESS: str = DevicePropertyName.IP_ADDRESS.value
-    STATE: str = DevicePropertyName.STATE.value
+    IP_ADDRESS: str = DevicePropertyIdentifier.IP_ADDRESS.value
+    STATE: str = DevicePropertyIdentifier.STATE.value
     LOCAL_KEY: str = "local_key"
     USER_IDENTIFIER: str = "user_identifier"
 
@@ -125,8 +125,8 @@ class DeviceAttribute(ExtendedEnum):
     @author         Adam Kadlec <adam.kadlec@fastybird.com>
     """
 
-    MODEL: str = DeviceAttributeName.HARDWARE_MODEL.value
-    MAC_ADDRESS: str = DeviceAttributeName.HARDWARE_MAC_ADDRESS.value
+    MODEL: str = DeviceAttributeIdentifier.HARDWARE_MODEL.value
+    MAC_ADDRESS: str = DeviceAttributeIdentifier.HARDWARE_MAC_ADDRESS.value
     SERIAL_NUMBER: str = "serial_number"
     ENCRYPTED: str = "encrypted"
     PROTOCOL_VERSION: str = "protocol_version"
