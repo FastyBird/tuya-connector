@@ -8,18 +8,27 @@
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  * @package        FastyBird:TuyaConnector!
  * @subpackage     DI
- * @since          0.1.0
+ * @since          0.13.0
  *
- * @date           25.04.22
+ * @date           24.08.22
  */
 
 namespace FastyBird\TuyaConnector\DI;
 
 use Doctrine\Persistence;
+use FastyBird\TuyaConnector;
+use FastyBird\TuyaConnector\Clients;
+use FastyBird\TuyaConnector\Commands;
+use FastyBird\TuyaConnector\Connector;
+use FastyBird\TuyaConnector\Consumers;
+use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Hydrators;
 use FastyBird\TuyaConnector\Schemas;
 use Nette;
 use Nette\DI;
+use Nette\Schema;
+use React\EventLoop;
+use stdClass;
 
 /**
  * Tuya connector
@@ -53,9 +62,58 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 	/**
 	 * {@inheritDoc}
 	 */
+	public function getConfigSchema(): Schema\Schema
+	{
+		return Schema\Expect::structure([
+			'loop' => Schema\Expect::anyOf(Schema\Expect::string(), Schema\Expect::type(DI\Definitions\Statement::class))
+				->nullable(),
+		]);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
 	public function loadConfiguration(): void
 	{
 		$builder = $this->getContainerBuilder();
+		/** @var stdClass $configuration */
+		$configuration = $this->getConfig();
+
+		if ($configuration->loop === null && $builder->getByType(EventLoop\LoopInterface::class) === null) {
+			$builder->addDefinition($this->prefix('client.loop'), new DI\Definitions\ServiceDefinition())
+				->setType(EventLoop\LoopInterface::class)
+				->setFactory('React\EventLoop\Factory::create');
+		}
+
+		// Service factory
+		$builder->addDefinition($this->prefix('service.factory'), new DI\Definitions\ServiceDefinition())
+			->setType(TuyaConnector\ConnectorFactory::class);
+
+		// Connector
+		$builder->addFactoryDefinition($this->prefix('connector'))
+			->setImplement(Connector\ConnectorFactory::class)
+			->getResultDefinition()
+			->setType(Connector\Connector::class);
+
+		// Consumers
+		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())
+			->setType(Consumers\Consumer::class);
+
+		// Clients
+		$builder->addFactoryDefinition($this->prefix('client.devices'))
+			->setImplement(Clients\DevicesClientFactory::class)
+			->getResultDefinition()
+			->setType(Clients\DevicesClient::class);
+
+		$builder->addFactoryDefinition($this->prefix('client.devices.local'))
+			->setImplement(Clients\Devices\LocalClientFactory::class)
+			->getResultDefinition()
+			->setType(Clients\Devices\LocalClient::class);
+
+		$builder->addFactoryDefinition($this->prefix('client.devices.openApi'))
+			->setImplement(Clients\Devices\OpenApiClientFactory::class)
+			->getResultDefinition()
+			->setType(Clients\Devices\OpenApiClient::class);
 
 		// API schemas
 		$builder->addDefinition($this->prefix('schemas.connector.tuya'), new DI\Definitions\ServiceDefinition())
@@ -70,6 +128,29 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 
 		$builder->addDefinition($this->prefix('hydrators.device.tuya'), new DI\Definitions\ServiceDefinition())
 			->setType(Hydrators\TuyaDeviceHydrator::class);
+
+		// Helpers
+		$builder->addDefinition($this->prefix('helpers.database'), new DI\Definitions\ServiceDefinition())
+			->setType(Helpers\DatabaseHelper::class);
+
+		$builder->addDefinition($this->prefix('helpers.connector'), new DI\Definitions\ServiceDefinition())
+			->setType(Helpers\ConnectorHelper::class);
+
+		$builder->addDefinition($this->prefix('helpers.device'), new DI\Definitions\ServiceDefinition())
+			->setType(Helpers\DeviceHelper::class);
+
+		$builder->addDefinition($this->prefix('helpers.property'), new DI\Definitions\ServiceDefinition())
+			->setType(Helpers\PropertyHelper::class);
+
+		// Console commands
+		$builder->addDefinition($this->prefix('commands.initialize'), new DI\Definitions\ServiceDefinition())
+			->setType(Commands\InitializeCommand::class);
+
+		$builder->addDefinition($this->prefix('commands.discovery'), new DI\Definitions\ServiceDefinition())
+			->setType(Commands\DiscoveryCommand::class);
+
+		$builder->addDefinition($this->prefix('commands.execute'), new DI\Definitions\ServiceDefinition())
+			->setType(Commands\ExecuteCommand::class);
 	}
 
 	/**

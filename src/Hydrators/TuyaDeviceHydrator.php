@@ -26,7 +26,7 @@ use FastyBird\TuyaConnector\Entities;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  *
- * @phpstan-extends DevicesModuleHydrators\Devices\DeviceHydrator<Entities\ITuyaDevice>
+ * @phpstan-extends DevicesModuleHydrators\Devices\DeviceHydrator<Entities\ITuyaDeviceEntity>
  */
 final class TuyaDeviceHydrator extends DevicesModuleHydrators\Devices\DeviceHydrator
 {
@@ -36,7 +36,7 @@ final class TuyaDeviceHydrator extends DevicesModuleHydrators\Devices\DeviceHydr
 	 */
 	public function getEntityName(): string
 	{
-		return Entities\TuyaDevice::class;
+		return Entities\TuyaDeviceEntity::class;
 	}
 
 }

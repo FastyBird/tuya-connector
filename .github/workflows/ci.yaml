@@ -20,8 +20,8 @@ env:
   coverage: "none"
 
 jobs:
-  php-qa:
-    name: "Quality assurance for PHP code"
+  qa:
+    name: "Quality assurance of PHP code"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -78,10 +78,10 @@ jobs:
         run: "${{ env.composer-install }}"
 
       - name: "Coding Standard"
-        run: "make php_cs"
+        run: "make cs"
 
-  php-static-analysis:
-    name: "Static analysis for PHP code"
+  static-analysis:
+    name: "Static analysis of PHP code"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -137,10 +137,10 @@ jobs:
       - name: "PHPStan"
         run: "make phpstan"
 
-  php-tests:
-    name: "Tests for PHP code"
+  tests:
+    name: "Tests of PHP code"
     runs-on: "${{ matrix.operating-system }}"
-    needs: ["php-qa", "php-static-analysis"]
+    needs: ["qa", "static-analysis"]
 
     strategy:
       fail-fast: false
@@ -151,6 +151,13 @@ jobs:
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v2"
+
+      - name : "Setup MySQL"
+        uses : "mirromutth/mysql-action@v1.1"
+        with :
+          mysql version : "5.7"
+          mysql database : "testdb"
+          mysql root password : "root"
 
       - name: "Setup PHP cache environment"
         id: "extcache"
@@ -193,7 +200,7 @@ jobs:
         run: "${{ env.composer-install }} ${{ matrix.composer-args }}"
 
       - name: "Tests"
-        run: "make php_tests"
+        run: "make tests"
 
       - name: "Upload test output"
         if: ${{ failure() }}
@@ -202,10 +209,10 @@ jobs:
           name: output
           path: tests/**/output
 
-  php-tests-code-coverage:
-    name: "Tests for PHP code with code coverage"
+  tests-code-coverage:
+    name: "Tests of PHP code with code coverage"
     runs-on: "${{ matrix.operating-system }}"
-    needs: ["php-tests"]
+    needs: ["tests"]
 
     strategy:
       matrix:
@@ -218,6 +225,13 @@ jobs:
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v2"
+
+      - name : "Setup MySQL"
+        uses : "mirromutth/mysql-action@v1.1"
+        with :
+          mysql version : "5.7"
+          mysql database : "testdb"
+          mysql root password : "root"
 
       - name: "Setup PHP cache environment"
         id: "extcache"
@@ -260,7 +274,7 @@ jobs:
         run: "${{ env.composer-install }} ${{ matrix.composer-args }}"
 
       - name: "Tests"
-        run: "make php_coverage"
+        run: "make coverage"
 
       - name: "Coveralls.io"
         env:
@@ -270,174 +284,3 @@ jobs:
         run: |
           wget https://github.com/php-coveralls/php-coveralls/releases/download/v2.1.0/php-coveralls.phar
           php php-coveralls.phar --verbose --config tests/.coveralls.yml
-
-  build-python:
-    name: "Build Python distribution"
-    runs-on: "${{ matrix.operating-system }}"
-
-    strategy:
-      matrix:
-        python: ["3.9"]
-        operating-system: ["ubuntu-latest"]
-
-    steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v2"
-
-      - name: "Set up Python ${{ matrix.python }}"
-        uses: "actions/setup-python@v1"
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: "Extract version"
-        uses: "battila7/get-version-action@v2"
-        id: "get_version"
-
-      - name: "Install dependencies"
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: "Install build dependencies"
-        run: "python -m pip install wheel --user"
-
-      - name: "Build a binary wheel and a source tarball"
-        run: "python setup.py sdist bdist_wheel"
-
-      - name: "Upload build result"
-        uses: "actions/upload-artifact@v1"
-        with:
-          name: python-dist
-          path: dist
-
-  python-qa:
-    name: "Quality assurance for Python code"
-    runs-on: "${{ matrix.operating-system }}"
-    needs: "build-python"
-
-    strategy:
-      matrix:
-        python: ["3.9"]
-        operating-system: ["ubuntu-latest"]
-
-    steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v2"
-
-      - name: "Set up Python ${{ matrix.python }}"
-        uses: "actions/setup-python@v1"
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: "Install dependencies"
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: "Run code check"
-        run: "make py_qa"
-
-  python-tests:
-    name: "Tests for Python code"
-    runs-on: "${{ matrix.operating-system }}"
-    needs: ["python-qa"]
-
-    strategy:
-      matrix:
-        python: ["3.9"]
-        operating-system: ["ubuntu-latest"]
-
-    steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v2"
-
-      - name: "Set up Python ${{ matrix.python }}"
-        uses: "actions/setup-python@v1"
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: "Install dependencies"
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: "Run tests"
-        run: "make py_tests"
-
-  test-install-python:
-    name: "Test installation of Python distribution"
-    runs-on: "${{ matrix.operating-system }}"
-    needs: "build-python"
-
-    strategy:
-      matrix:
-        python: ["3.7", "3.8", "3.9", "3.10"]
-        operating-system: ["ubuntu-latest"]
-        installable: ["wheel", "sdist"]
-
-    steps:
-      - name: "Download build result"
-        uses: "actions/download-artifact@v1"
-        with:
-          name: python-dist
-          path: dist
-
-      - name: "Set up Python ${{ matrix.python }}"
-        uses: "actions/setup-python@v1"
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: "Install wheel"
-        if: matrix.installable == 'wheel'
-        run: "pip install dist/fastybird_tuya_connector-*-py3-none-any.whl"
-
-      - name: "Install source tarball"
-        if: matrix.installable == 'sdist'
-        run: "pip install dist/fastybird-tuya-connector-*.tar.gz"
-
-  publish-on-testpypi:
-    name: "Publish Python distribution on Test PyPI"
-    runs-on: "${{ matrix.operating-system }}"
-    needs: ["test-install-python", "python-tests"]
-
-    strategy:
-      matrix:
-        operating-system: ["ubuntu-latest"]
-
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-
-    steps:
-      - name: "Download build result"
-        uses: "actions/download-artifact@v1"
-        with:
-          name: python-dist
-          path: dist
-
-      - name: "Publish to index"
-        uses: "pypa/gh-action-pypi-publish@master"
-        with:
-          password: ${{ secrets.testpypi_password }}
-          repository_url: "https://test.pypi.org/legacy/"
-
-  publish-on-pypi:
-    name: "Publish Python distribution to PyPI"
-    runs-on: "${{ matrix.operating-system }}"
-    needs: "publish-on-testpypi"
-
-    strategy:
-      matrix:
-        operating-system: ["ubuntu-latest"]
-
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-
-    steps:
-      - name: "Download build result"
-        uses: "actions/download-artifact@v1"
-        with:
-          name: python-dist
-          path: dist
-
-      - name: "Publish to index"
-        uses: "pypa/gh-action-pypi-publish@master"
-        with:
-          password: ${{ secrets.pypi_password }}
