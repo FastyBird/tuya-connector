@@ -100,20 +100,15 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			->setType(Consumers\Consumer::class);
 
 		// Clients
-		$builder->addFactoryDefinition($this->prefix('client.devices'))
-			->setImplement(Clients\DevicesClientFactory::class)
+		$builder->addFactoryDefinition($this->prefix('client.local'))
+			->setImplement(Clients\LocalClientFactory::class)
 			->getResultDefinition()
-			->setType(Clients\DevicesClient::class);
+			->setType(Clients\LocalClient::class);
 
-		$builder->addFactoryDefinition($this->prefix('client.devices.local'))
-			->setImplement(Clients\Devices\LocalClientFactory::class)
+		$builder->addFactoryDefinition($this->prefix('client.openApi'))
+			->setImplement(Clients\OpenApiClientFactory::class)
 			->getResultDefinition()
-			->setType(Clients\Devices\LocalClient::class);
-
-		$builder->addFactoryDefinition($this->prefix('client.devices.openApi'))
-			->setImplement(Clients\Devices\OpenApiClientFactory::class)
-			->getResultDefinition()
-			->setType(Clients\Devices\OpenApiClient::class);
+			->setType(Clients\OpenApiClient::class);
 
 		// API schemas
 		$builder->addDefinition($this->prefix('schemas.connector.tuya'), new DI\Definitions\ServiceDefinition())

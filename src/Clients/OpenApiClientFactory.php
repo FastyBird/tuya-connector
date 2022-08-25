@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * LocalClient.php
+ * OpenApiClientFactory.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -13,17 +13,26 @@
  * @date           25.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients\Devices;
+namespace FastyBird\TuyaConnector\Clients;
+
+use FastyBird\Metadata\Entities as MetadataEntities;
 
 /**
- * Local devices client
+ * Cloud OpenAPI devices client factory
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Clients
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class LocalClient
+interface OpenApiClientFactory extends ClientFactory
 {
+
+	/**
+	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
+	 *
+	 * @return OpenApiClient
+	 */
+	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): OpenApiClient;
 
 }

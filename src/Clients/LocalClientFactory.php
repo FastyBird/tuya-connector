@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * DevicesClientFactory.php
+ * LocalClientFactory.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -18,21 +18,21 @@ namespace FastyBird\TuyaConnector\Clients;
 use FastyBird\Metadata\Entities as MetadataEntities;
 
 /**
- * Devices client factory
+ * Local devices client factory
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Clients
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-interface DevicesClientFactory extends ClientFactory
+interface LocalClientFactory extends ClientFactory
 {
 
 	/**
 	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
 	 *
-	 * @return DevicesClient
+	 * @return LocalClient
 	 */
-	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): DevicesClient;
+	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): LocalClient;
 
 }
