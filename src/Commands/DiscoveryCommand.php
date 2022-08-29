@@ -29,7 +29,6 @@ use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use Ramsey\Uuid;
 use React\EventLoop;
-use ReflectionClass;
 use Symfony\Component\Console;
 use Symfony\Component\Console\Input;
 use Symfony\Component\Console\Output;
@@ -47,7 +46,7 @@ use Throwable;
 class DiscoveryCommand extends Console\Command\Command
 {
 
-	private const DISCOVERY_WAITING_INTERVAL = 5.0;
+	private const DISCOVERY_WAITING_INTERVAL = 30.0;
 	private const DISCOVERY_MAX_PROCESSING_INTERVAL = 30.0;
 
 	private const QUEUE_PROCESSING_INTERVAL = 0.01;
@@ -61,8 +60,8 @@ class DiscoveryCommand extends Console\Command\Command
 	/** @var EventLoop\TimerInterface|null */
 	private ?EventLoop\TimerInterface $progressBarTimer;
 
-	/** @var Clients\ClientFactory[] */
-	private array $clientsFactories;
+	/** @var Clients\DiscoveryClientFactory */
+	private Clients\DiscoveryClientFactory $clientFactory;
 
 	/** @var Helpers\ConnectorHelper */
 	private Helpers\ConnectorHelper $connectorHelper;
@@ -89,7 +88,7 @@ class DiscoveryCommand extends Console\Command\Command
 	private EventLoop\LoopInterface $eventLoop;
 
 	/**
-	 * @param Clients\ClientFactory[] $clientsFactories
+	 * @param Clients\DiscoveryClientFactory $clientFactory
 	 * @param Helpers\ConnectorHelper $connectorHelper
 	 * @param Helpers\DeviceHelper $deviceHelper
 	 * @param Consumers\Consumer $consumer
@@ -101,7 +100,7 @@ class DiscoveryCommand extends Console\Command\Command
 	 * @param string|null $name
 	 */
 	public function __construct(
-		array $clientsFactories,
+		Clients\DiscoveryClientFactory $clientFactory,
 		Helpers\ConnectorHelper $connectorHelper,
 		Helpers\DeviceHelper $deviceHelper,
 		Consumers\Consumer $consumer,
@@ -112,7 +111,7 @@ class DiscoveryCommand extends Console\Command\Command
 		?Log\LoggerInterface $logger = null,
 		?string $name = null
 	) {
-		$this->clientsFactories = $clientsFactories;
+		$this->clientFactory = $clientFactory;
 
 		$this->connectorHelper = $connectorHelper;
 		$this->deviceHelper = $deviceHelper;
@@ -279,185 +278,171 @@ class DiscoveryCommand extends Console\Command\Command
 			return Console\Command\Command::FAILURE;
 		}
 
-		foreach ($this->clientsFactories as $clientFactory) {
-			$rc = new ReflectionClass($clientFactory);
+		$client = $this->clientFactory->create($connector);
 
-			$constants = $rc->getConstants();
+		$progressBar = new Console\Helper\ProgressBar(
+			$output,
+			intval(self::DISCOVERY_WAITING_INTERVAL * 60)
+		);
 
-			if (
-				array_key_exists(Clients\ClientFactory::MODE_CONSTANT_NAME, $constants)
-				&& $constants[Clients\ClientFactory::MODE_CONSTANT_NAME] === $mode
-			) {
-				/** @var Clients\IClient $client */
-				$client = $clientFactory->create($connector);
+		$progressBar->setFormat('[%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %');
 
-				$progressBar = new Console\Helper\ProgressBar(
-					$output,
-					intval(self::DISCOVERY_WAITING_INTERVAL * 60)
-				);
+		try {
+			$this->eventLoop->addSignal(SIGINT, function (int $signal) use ($client, $io): void {
+				$this->logger->info('Stopping Tuya connector discovery...', [
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'   => 'discovery-cmd',
+				]);
 
-				$progressBar->setFormat('[%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %');
+				$io->info('Stopping Tuya connector discovery...');
 
-				try {
-					$this->eventLoop->addSignal(SIGINT, function (int $signal) use ($client, $io): void {
-						$this->logger->info('Stopping Tuya connector discovery...', [
-							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'   => 'discovery-cmd',
-						]);
+				$client->disconnect();
 
-						$io->info('Stopping Tuya connector discovery...');
+				$this->checkAndTerminate($io);
+			});
 
-						$client->disconnect();
+			$this->eventLoop->futureTick(function () use ($client, $io, $progressBar): void {
+				$this->logger->info('Starting Tuya connector discovery...', [
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'   => 'discovery-cmd',
+				]);
 
-						$this->checkAndTerminate($io);
-					});
+				$io->info('Starting Tuya connector discovery...');
 
-					$this->eventLoop->futureTick(function () use ($client, $io, $progressBar): void {
-						$this->logger->info('Starting Tuya connector discovery...', [
-							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'   => 'discovery-cmd',
-						]);
+				$progressBar->start();
 
-						$io->info('Starting Tuya connector discovery...');
+				$this->executedTime = $this->dateTimeFactory->getNow();
 
-						$progressBar->start();
+				$client->discover();
+			});
 
-						$this->executedTime = $this->dateTimeFactory->getNow();
+			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
+				self::QUEUE_PROCESSING_INTERVAL,
+				function (): void {
+					$this->consumer->consume();
+				}
+			);
 
-						$client->discover();
-					});
+			$this->progressBarTimer = $this->eventLoop->addPeriodicTimer(
+				0.1,
+				function () use ($progressBar): void {
+					$progressBar->advance();
+				}
+			);
 
-					$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
-						self::QUEUE_PROCESSING_INTERVAL,
-						function (): void {
-							$this->consumer->consume();
-						}
+			$this->eventLoop->addTimer(
+				self::DISCOVERY_WAITING_INTERVAL,
+				function () use ($client, $io): void {
+					$client->disconnect();
+
+					$this->checkAndTerminate($io);
+				}
+			);
+
+			$this->eventLoop->run();
+
+			$progressBar->finish();
+
+			$io->newLine();
+
+			$findDevicesQuery = new DevicesModuleQueries\FindDevicesQuery();
+			$findDevicesQuery->byConnectorId($connector->getId());
+
+			$devices = $this->devicesRepository->findAllBy($findDevicesQuery);
+
+			$table = new Console\Helper\Table($output);
+			$table->setHeaders([
+				'#',
+				'ID',
+				'Name',
+				'Type',
+				'IP address',
+			]);
+
+			$foundDevices = 0;
+
+			foreach ($devices as $device) {
+				$createdAt = $device->getCreatedAt();
+
+				if (
+					$createdAt !== null
+					&& $this->executedTime !== null
+					&& $createdAt->getTimestamp() > $this->executedTime->getTimestamp()
+				) {
+					$foundDevices++;
+
+					$ipAddress = $this->deviceHelper->getConfiguration(
+						$device->getId(),
+						Types\DevicePropertyIdentifierType::get(Types\DevicePropertyIdentifierType::IDENTIFIER_IP_ADDRESS)
 					);
 
-					$this->progressBarTimer = $this->eventLoop->addPeriodicTimer(
-						0.1,
-						function () use ($progressBar): void {
-							$progressBar->advance();
-						}
-					);
-
-					$this->eventLoop->addTimer(
-						self::DISCOVERY_WAITING_INTERVAL,
-						function () use ($client, $io): void {
-							$client->disconnect();
-
-							$this->checkAndTerminate($io);
-						}
-					);
-
-					$this->eventLoop->run();
-
-					$progressBar->finish();
-
-					$io->newLine();
-
-					$findDevicesQuery = new DevicesModuleQueries\FindDevicesQuery();
-					$findDevicesQuery->byConnectorId($connector->getId());
-
-					$devices = $this->devicesRepository->findAllBy($findDevicesQuery);
-
-					$table = new Console\Helper\Table($output);
-					$table->setHeaders([
-						'#',
-						'ID',
-						'Name',
-						'Type',
-						'IP address',
+					$table->addRow([
+						$foundDevices,
+						$device->getPlainId(),
+						$device->getName() ?? $device->getIdentifier(),
+						'N/A',
+						is_string($ipAddress) ? $ipAddress : 'N/A',
 					]);
-
-					$foundDevices = 0;
-
-					foreach ($devices as $device) {
-						$createdAt = $device->getCreatedAt();
-
-						if (
-							$createdAt !== null
-							&& $this->executedTime !== null
-							&& $createdAt->getTimestamp() > $this->executedTime->getTimestamp()
-						) {
-							$foundDevices++;
-
-							$ipAddress = $this->deviceHelper->getConfiguration(
-								$device->getId(),
-								Types\DevicePropertyIdentifierType::get(Types\DevicePropertyIdentifierType::IDENTIFIER_IP_ADDRESS)
-							);
-
-							$table->addRow([
-								$foundDevices,
-								$device->getPlainId(),
-								$device->getName() ?? $device->getIdentifier(),
-								'N/A',
-								is_string($ipAddress) ? $ipAddress : 'N/A',
-							]);
-						}
-					}
-
-					if ($foundDevices > 0) {
-						$io->newLine();
-
-						$io->info(sprintf('Found %d new devices', $foundDevices));
-
-						$table->render();
-
-						$io->newLine();
-
-					} else {
-						$io->info('No devices were found');
-					}
-
-					$io->success('Devices discovery was successfully finished');
-
-					return Console\Command\Command::SUCCESS;
-
-				} catch (DevicesModuleExceptions\TerminateException $ex) {
-					$this->logger->error('An error occurred', [
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'discovery-cmd',
-						'exception' => [
-							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
-						],
-					]);
-
-					$io->error('Something went wrong, discovery could not be finished. Error was logged.');
-
-					if ($client->isConnected()) {
-						$client->disconnect();
-					}
-
-					$this->eventLoop->stop();
-
-					return Console\Command\Command::FAILURE;
-
-				} catch (Throwable $ex) {
-					$this->logger->error('An unhandled error occurred', [
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'discovery-cmd',
-						'exception' => [
-							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
-						],
-					]);
-
-					$io->error('Something went wrong, discovery could not be finished. Error was logged.');if ($client->isConnected()) {
-						$client->disconnect();
-					}
-
-					$this->eventLoop->stop();
-
-					return Console\Command\Command::FAILURE;
 				}
 			}
+
+			if ($foundDevices > 0) {
+				$io->newLine();
+
+				$io->info(sprintf('Found %d new devices', $foundDevices));
+
+				$table->render();
+
+				$io->newLine();
+
+			} else {
+				$io->info('No devices were found');
+			}
+
+			$io->success('Devices discovery was successfully finished');
+
+			return Console\Command\Command::SUCCESS;
+
+		} catch (DevicesModuleExceptions\TerminateException $ex) {
+			$this->logger->error('An error occurred', [
+				'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type'      => 'discovery-cmd',
+				'exception' => [
+					'message' => $ex->getMessage(),
+					'code'    => $ex->getCode(),
+				],
+			]);
+
+			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
+
+			if ($client->isConnected()) {
+				$client->disconnect();
+			}
+
+			$this->eventLoop->stop();
+
+			return Console\Command\Command::FAILURE;
+
+		} catch (Throwable $ex) {
+			$this->logger->error('An unhandled error occurred', [
+				'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type'      => 'discovery-cmd',
+				'exception' => [
+					'message' => $ex->getMessage(),
+					'code'    => $ex->getCode(),
+				],
+			]);
+
+			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
+
+			if ($client->isConnected()) {
+				$client->disconnect();
+			}
+
+			$this->eventLoop->stop();
+
+			return Console\Command\Command::FAILURE;
 		}
-
-		$io->error('Connector client is not configured');
-
-		return Console\Command\Command::FAILURE;
 	}
 
 	/**

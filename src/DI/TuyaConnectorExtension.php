@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\DI;
 
 use Doctrine\Persistence;
 use FastyBird\TuyaConnector;
+use FastyBird\TuyaConnector\API;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Commands;
 use FastyBird\TuyaConnector\Connector;
@@ -99,6 +100,13 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())
 			->setType(Consumers\Consumer::class);
 
+		// API
+		$builder->addDefinition($this->prefix('api.openApi.api'))
+			->setType(API\OpenApiApiFactory::class);
+
+		$builder->addDefinition($this->prefix('api.openApi.entityFactory'))
+			->setType(API\OpenApiEntityFactory::class);
+
 		// Clients
 		$builder->addFactoryDefinition($this->prefix('client.local'))
 			->setImplement(Clients\LocalClientFactory::class)
@@ -109,6 +117,11 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			->setImplement(Clients\OpenApiClientFactory::class)
 			->getResultDefinition()
 			->setType(Clients\OpenApiClient::class);
+
+		$builder->addFactoryDefinition($this->prefix('client.discover'))
+			->setImplement(Clients\DiscoveryClientFactory::class)
+			->getResultDefinition()
+			->setType(Clients\DiscoveryClient::class);
 
 		// API schemas
 		$builder->addDefinition($this->prefix('schemas.connector.tuya'), new DI\Definitions\ServiceDefinition())

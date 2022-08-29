@@ -33,6 +33,7 @@ class MessageSourceType extends Consistence\Enum\Enum
 	 */
 	public const SOURCE_LOCAL_API = 'local_api';
 	public const SOURCE_CLOUD_OPENAPI = 'cloud_openapi';
+	public const SOURCE_LOCAL_DISCOVERY = 'local_discovery';
 
 	/**
 	 * @return string

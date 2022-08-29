@@ -225,6 +225,10 @@ class InitializeCommand extends Console\Command\Command
 
 		$name = $io->askQuestion($question);
 
+		$accessId = $this->askAccessId($io);
+
+		$accessSecret = $this->askAccessSecret($io);
+
 		try {
 			// Start transaction connection to the database
 			$this->getOrmConnection()->beginTransaction();
@@ -240,6 +244,22 @@ class InitializeCommand extends Console\Command\Command
 				'identifier' => Types\ConnectorPropertyIdentifierType::IDENTIFIER_CLIENT_MODE,
 				'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
 				'value'      => $mode->getValue(),
+				'connector'  => $connector,
+			]));
+
+			$this->propertiesManager->create(Utils\ArrayHash::from([
+				'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+				'identifier' => Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_ID,
+				'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+				'value'      => $accessId,
+				'connector'  => $connector,
+			]));
+
+			$this->propertiesManager->create(Utils\ArrayHash::from([
+				'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+				'identifier' => Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_SECRET,
+				'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+				'value'      => $accessSecret,
 				'connector'  => $connector,
 			]));
 
@@ -399,6 +419,54 @@ class InitializeCommand extends Console\Command\Command
 			}
 		}
 
+		$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
+		$findPropertyQuery->forConnector($connector);
+		$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_ID);
+
+		$accessIdProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
+
+		if ($accessIdProperty === null) {
+			$changeAccessId = true;
+
+		} else {
+			$question = new Console\Question\ConfirmationQuestion(
+				'Do you want to change connector cloud Access ID?',
+				false
+			);
+
+			$changeAccessId = $io->askQuestion($question);
+		}
+
+		$accessId = null;
+
+		if ($changeAccessId) {
+			$accessId = $this->askAccessId($io);
+		}
+
+		$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
+		$findPropertyQuery->forConnector($connector);
+		$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_SECRET);
+
+		$accessSecretProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
+
+		if ($accessSecretProperty === null) {
+			$changeAccessSecret = true;
+
+		} else {
+			$question = new Console\Question\ConfirmationQuestion(
+				'Do you want to change connector cloud Access Secret?',
+				false
+			);
+
+			$changeAccessSecret = $io->askQuestion($question);
+		}
+
+		$accessSecret = null;
+
+		if ($changeAccessSecret) {
+			$accessSecret = $this->askAccessSecret($io);
+		}
+
 		try {
 			// Start transaction connection to the database
 			$this->getOrmConnection()->beginTransaction();
@@ -423,6 +491,42 @@ class InitializeCommand extends Console\Command\Command
 			} elseif ($mode !== null) {
 				$this->propertiesManager->update($modeProperty, Utils\ArrayHash::from([
 					'value' => $mode->getValue(),
+				]));
+			}
+
+			if ($accessIdProperty === null) {
+				if ($accessId === null) {
+					$accessId = $this->askAccessId($io);
+				}
+
+				$this->propertiesManager->create(Utils\ArrayHash::from([
+					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+					'identifier' => Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_ID,
+					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+					'value'      => $accessId,
+					'connector'  => $connector,
+				]));
+			} elseif ($mode !== null) {
+				$this->propertiesManager->update($accessIdProperty, Utils\ArrayHash::from([
+					'value' => $accessId,
+				]));
+			}
+
+			if ($accessSecretProperty === null) {
+				if ($accessSecret === null) {
+					$accessSecret = $this->askAccessSecret($io);
+				}
+
+				$this->propertiesManager->create(Utils\ArrayHash::from([
+					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+					'identifier' => Types\ConnectorPropertyIdentifierType::IDENTIFIER_ACCESS_SECRET,
+					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+					'value'      => $accessSecret,
+					'connector'  => $connector,
+				]));
+			} elseif ($mode !== null) {
+				$this->propertiesManager->update($accessSecretProperty, Utils\ArrayHash::from([
+					'value' => $accessSecret,
 				]));
 			}
 
@@ -589,6 +693,30 @@ class InitializeCommand extends Console\Command\Command
 		}
 
 		throw new Exceptions\InvalidStateException('Unknown connector mode selected');
+	}
+
+	/**
+	 * @param Style\SymfonyStyle $io
+	 *
+	 * @return string
+	 */
+	private function askAccessId(Style\SymfonyStyle $io): string
+	{
+		$question = new Console\Question\Question('Provide cloud authentication Access ID');
+
+		return strval($io->askQuestion($question));
+	}
+
+	/**
+	 * @param Style\SymfonyStyle $io
+	 *
+	 * @return string
+	 */
+	private function askAccessSecret(Style\SymfonyStyle $io): string
+	{
+		$question = new Console\Question\Question('Provide cloud authentication Access Secret');
+
+		return strval($io->askQuestion($question));
 	}
 
 	/**
