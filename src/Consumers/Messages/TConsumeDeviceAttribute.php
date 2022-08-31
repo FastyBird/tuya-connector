@@ -20,6 +20,7 @@ use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
+use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
@@ -93,13 +94,19 @@ trait TConsumeDeviceAttribute
 		}
 
 		if ($attributeItem === null) {
-			/** @var DevicesModuleEntities\Devices\IDevice|null $deviceEntity */
+			/** @var Entities\TuyaDevice|null $deviceEntity */
 			$deviceEntity = $this->databaseHelper->query(
-				function () use ($deviceId): ?DevicesModuleEntities\Devices\IDevice {
+				function () use ($deviceId): ?Entities\TuyaDevice {
 					$findDeviceQuery = new DevicesModuleQueries\FindDevicesQuery();
 					$findDeviceQuery->byId($deviceId);
 
-					return $this->devicesRepository->findOneBy($findDeviceQuery);
+					/** @var Entities\TuyaDevice|null $deviceEntity */
+					$deviceEntity = $this->devicesRepository->findOneBy(
+						$findDeviceQuery,
+						Entities\TuyaDevice::class
+					);
+
+					return $deviceEntity;
 				}
 			);
 

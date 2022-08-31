@@ -162,15 +162,18 @@ final class CloudDiscoveryMessage implements Consumer
 				return true;
 			}
 
-			/** @var DevicesModuleEntities\Devices\IDevice $deviceEntity */
+			/** @var Entities\TuyaDevice $deviceEntity */
 			$deviceEntity = $this->databaseHelper->transaction(
-				function () use ($entity, $connectorEntity): DevicesModuleEntities\Devices\IDevice {
-					return $this->devicesManager->create(Utils\ArrayHash::from([
+				function () use ($entity, $connectorEntity): Entities\TuyaDevice {
+					/** @var Entities\TuyaDevice $deviceEntity */
+					$deviceEntity = $this->devicesManager->create(Utils\ArrayHash::from([
 						'entity'     => Entities\TuyaDevice::class,
 						'connector'  => $connectorEntity,
 						'identifier' => $entity->getId(),
 						'name'       => $entity->getName(),
 					]));
+
+					return $deviceEntity;
 				}
 			);
 
