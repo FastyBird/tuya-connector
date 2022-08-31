@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * ClientsConsumer.php
+ * Messages.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -30,7 +30,7 @@ use SplQueue;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class ClientsConsumer
+final class Messages
 {
 
 	use Nette\SmartObject;

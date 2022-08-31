@@ -98,10 +98,10 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 
 		// Consumers
 		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())
-			->setType(Consumers\ClientsConsumer::class);
+			->setType(Consumers\Messages::class);
 
 		$builder->addDefinition($this->prefix('consumer.discovery.cloudDevice'), new DI\Definitions\ServiceDefinition())
-			->setType(Consumers\CloudDiscoveryMessage::class);
+			->setType(Consumers\Messages\CloudDiscoveryMessage::class);
 
 		// API
 		$builder->addDefinition($this->prefix('api.openApi.api'))

@@ -75,8 +75,8 @@ final class Discovery
 	/** @var API\OpenApi */
 	private API\OpenApi $openApiApi;
 
-	/** @var Consumers\ClientsConsumer */
-	private Consumers\ClientsConsumer $consumer;
+	/** @var Consumers\Messages */
+	private Consumers\Messages $consumer;
 
 	/** @var Datagram\Factory */
 	private Datagram\Factory $serverFactory;
@@ -94,7 +94,7 @@ final class Discovery
 	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
 	 * @param API\OpenApiFactory $openApiApiFactory
 	 * @param Helpers\Connector $connectorHelper
-	 * @param Consumers\ClientsConsumer $consumer
+	 * @param Consumers\Messages $consumer
 	 * @param EventLoop\LoopInterface $eventLoop
 	 * @param PsrEventDispatcher\EventDispatcherInterface|null $dispatcher
 	 * @param Log\LoggerInterface|null $logger
@@ -103,7 +103,7 @@ final class Discovery
 		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
 		API\OpenApiFactory $openApiApiFactory,
 		Helpers\Connector $connectorHelper,
-		Consumers\ClientsConsumer $consumer,
+		Consumers\Messages $consumer,
 		EventLoop\LoopInterface $eventLoop,
 		?PsrEventDispatcher\EventDispatcherInterface $dispatcher,
 		?Log\LoggerInterface $logger = null

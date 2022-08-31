@@ -74,8 +74,8 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 	/** @var Helpers\Device */
 	private Helpers\Device $deviceHelper;
 
-	/** @var Consumers\ClientsConsumer */
-	private Consumers\ClientsConsumer $consumer;
+	/** @var Consumers\Messages */
+	private Consumers\Messages $consumer;
 
 	/** @var DevicesModuleModels\DataStorage\IConnectorsRepository */
 	private DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository;
@@ -96,7 +96,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 	 * @param Clients\DiscoveryFactory $clientFactory
 	 * @param Helpers\Connector $connectorHelper
 	 * @param Helpers\Device $deviceHelper
-	 * @param Consumers\ClientsConsumer $consumer
+	 * @param Consumers\Messages $consumer
 	 * @param DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository
 	 * @param DevicesModuleModels\Devices\IDevicesRepository $devicesRepository
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
@@ -108,7 +108,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 		Clients\DiscoveryFactory $clientFactory,
 		Helpers\Connector $connectorHelper,
 		Helpers\Device $deviceHelper,
-		Consumers\ClientsConsumer $consumer,
+		Consumers\Messages $consumer,
 		DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository,
 		DevicesModuleModels\Devices\IDevicesRepository $devicesRepository,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,

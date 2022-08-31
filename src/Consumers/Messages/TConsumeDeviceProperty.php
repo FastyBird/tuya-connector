@@ -13,7 +13,7 @@
  * @date           31.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers;
+namespace FastyBird\TuyaConnector\Consumers\Messages;
 
 use Doctrine\DBAL;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;

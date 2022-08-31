@@ -13,13 +13,14 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers;
+namespace FastyBird\TuyaConnector\Consumers\Messages;
 
 use Doctrine\DBAL;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
+use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types\DeviceAttributeIdentifier;
