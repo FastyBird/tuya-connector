@@ -15,6 +15,7 @@
 
 namespace FastyBird\TuyaConnector\API;
 
+use Exception;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
@@ -850,7 +851,7 @@ final class OpenApi
 		]);
 
 		if ($body === false) {
-			return Promise\reject(new \Exception('Message body could not be encoded'));
+			return Promise\reject(new Exceptions\OpenApiCall('Message body could not be encoded'));
 		}
 
 		$this->callRequest(
@@ -921,7 +922,7 @@ final class OpenApi
 				$method,
 				$requestPath,
 				$this->buildRequestHeaders($method, $path, $params, $body),
-				$body === null ? '' : $body
+				$body ?? ''
 			)
 			->then(function (Message\ResponseInterface $response) use ($deferred, $path): void {
 				$body = $response->getBody()->getContents();
@@ -1112,7 +1113,7 @@ final class OpenApi
 		// Header
 		$strToSign .= "\n";
 
-		# URL
+		// URL
 		$strToSign .= $path;
 
 		if (count($params) > 0) {

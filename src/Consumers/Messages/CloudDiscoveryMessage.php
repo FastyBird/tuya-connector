@@ -16,7 +16,6 @@
 namespace FastyBird\TuyaConnector\Consumers\Messages;
 
 use Doctrine\DBAL;
-use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;

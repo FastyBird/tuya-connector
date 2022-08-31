@@ -15,7 +15,6 @@
 
 namespace FastyBird\TuyaConnector\Clients;
 
-use Nette;
 use FastyBird\Metadata\Entities as MetadataEntities;
 
 /**

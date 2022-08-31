@@ -35,7 +35,6 @@ final class LocalApi
 	 */
 	public function connect(): void
 	{
-
 	}
 
 	/**
@@ -43,7 +42,6 @@ final class LocalApi
 	 */
 	public function disconnect(): void
 	{
-
 	}
 
 	/**
@@ -56,7 +54,6 @@ final class LocalApi
 
 	public function readStates()
 	{
-
 	}
 
 	public function writeStates(): bool
