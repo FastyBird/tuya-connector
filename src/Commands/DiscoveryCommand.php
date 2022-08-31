@@ -24,6 +24,7 @@ use FastyBird\Metadata;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Events;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
@@ -33,6 +34,7 @@ use Symfony\Component\Console;
 use Symfony\Component\Console\Input;
 use Symfony\Component\Console\Output;
 use Symfony\Component\Console\Style;
+use Symfony\Component\EventDispatcher;
 use Throwable;
 
 /**
@@ -43,7 +45,7 @@ use Throwable;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-class DiscoveryCommand extends Console\Command\Command
+class DiscoveryCommand extends Console\Command\Command implements EventDispatcher\EventSubscriberInterface
 {
 
 	private const DISCOVERY_WAITING_INTERVAL = 30.0;
@@ -59,6 +61,9 @@ class DiscoveryCommand extends Console\Command\Command
 
 	/** @var EventLoop\TimerInterface|null */
 	private ?EventLoop\TimerInterface $progressBarTimer;
+
+	/** @var Clients\DiscoveryClient|null */
+	private ?Clients\DiscoveryClient $client = null;
 
 	/** @var Clients\DiscoveryClientFactory */
 	private Clients\DiscoveryClientFactory $clientFactory;
@@ -127,6 +132,16 @@ class DiscoveryCommand extends Console\Command\Command
 		$this->logger = $logger ?? new Log\NullLogger();
 
 		parent::__construct($name);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public static function getSubscribedEvents(): array
+	{
+		return [
+			Events\DiscoveryFinishedEvent::class => 'discoveryFinished',
+		];
 	}
 
 	/**
@@ -278,7 +293,7 @@ class DiscoveryCommand extends Console\Command\Command
 			return Console\Command\Command::FAILURE;
 		}
 
-		$client = $this->clientFactory->create($connector);
+		$this->client = $this->clientFactory->create($connector);
 
 		$progressBar = new Console\Helper\ProgressBar(
 			$output,
@@ -288,7 +303,7 @@ class DiscoveryCommand extends Console\Command\Command
 		$progressBar->setFormat('[%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %');
 
 		try {
-			$this->eventLoop->addSignal(SIGINT, function (int $signal) use ($client, $io): void {
+			$this->eventLoop->addSignal(SIGINT, function (int $signal) use ($io): void {
 				$this->logger->info('Stopping Tuya connector discovery...', [
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'discovery-cmd',
@@ -296,12 +311,12 @@ class DiscoveryCommand extends Console\Command\Command
 
 				$io->info('Stopping Tuya connector discovery...');
 
-				$client->disconnect();
+				$this->client?->disconnect();
 
-				$this->checkAndTerminate($io);
+				$this->checkAndTerminate();
 			});
 
-			$this->eventLoop->futureTick(function () use ($client, $io, $progressBar): void {
+			$this->eventLoop->futureTick(function () use ($io, $progressBar): void {
 				$this->logger->info('Starting Tuya connector discovery...', [
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'discovery-cmd',
@@ -313,7 +328,7 @@ class DiscoveryCommand extends Console\Command\Command
 
 				$this->executedTime = $this->dateTimeFactory->getNow();
 
-				$client->discover();
+				$this->client?->discover();
 			});
 
 			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
@@ -332,10 +347,10 @@ class DiscoveryCommand extends Console\Command\Command
 
 			$this->eventLoop->addTimer(
 				self::DISCOVERY_WAITING_INTERVAL,
-				function () use ($client, $io): void {
-					$client->disconnect();
+				function (): void {
+					$this->client?->disconnect();
 
-					$this->checkAndTerminate($io);
+					$this->checkAndTerminate();
 				}
 			);
 
@@ -415,9 +430,7 @@ class DiscoveryCommand extends Console\Command\Command
 
 			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
 
-			if ($client->isConnected()) {
-				$client->disconnect();
-			}
+			$this->client->disconnect();
 
 			$this->eventLoop->stop();
 
@@ -435,9 +448,7 @@ class DiscoveryCommand extends Console\Command\Command
 
 			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
 
-			if ($client->isConnected()) {
-				$client->disconnect();
-			}
+			$this->client->disconnect();
 
 			$this->eventLoop->stop();
 
@@ -446,11 +457,21 @@ class DiscoveryCommand extends Console\Command\Command
 	}
 
 	/**
-	 * @param Style\SymfonyStyle $io
+	 * @param Events\DiscoveryFinishedEvent $event
 	 *
 	 * @return void
 	 */
-	private function checkAndTerminate(Style\SymfonyStyle $io): void
+	private function discoveryFinished(Events\DiscoveryFinishedEvent $event): void
+	{
+		$this->client?->disconnect();
+
+		$this->checkAndTerminate();
+	}
+
+	/**
+	 * @return void
+	 */
+	private function checkAndTerminate(): void
 	{
 		if ($this->consumer->isEmpty()) {
 			if ($this->consumerTimer !== null) {
@@ -489,8 +510,8 @@ class DiscoveryCommand extends Console\Command\Command
 
 			$this->eventLoop->addTimer(
 				self::DISCOVERY_WAITING_INTERVAL,
-				function () use ($io): void {
-					$this->checkAndTerminate($io);
+				function (): void {
+					$this->checkAndTerminate();
 				}
 			);
 		}

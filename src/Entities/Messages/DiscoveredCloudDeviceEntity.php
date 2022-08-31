@@ -37,14 +37,11 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 	/** @var string */
 	private string $localKey;
 
-	/** @var string */
-	private string $name;
+	/** @var string|null */
+	private ?string $name;
 
-	/** @var string */
-	private string $uid;
-
-	/** @var string */
-	private string $model;
+	/** @var string|null */
+	private ?string $model;
 
 	/** @var string|null */
 	private ?string $sn;
@@ -61,9 +58,8 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 	/**
 	 * @param string $id
 	 * @param string $localKey
-	 * @param string $name
-	 * @param string $uid
-	 * @param string $model
+	 * @param string|null $name
+	 * @param string|null $model
 	 * @param string|null $sn
 	 * @param string|null $mac
 	 * @param DiscoveredCloudDataPointEntity[] $dataPoints
@@ -72,9 +68,8 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 	public function __construct(
 		string $id,
 		string $localKey,
-		string $name,
-		string $uid,
-		string $model,
+		?string $name,
+		?string $model,
 		?string $sn,
 		?string $mac,
 		array $dataPoints,
@@ -83,7 +78,6 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 		$this->id = $id;
 		$this->localKey = $localKey;
 		$this->name = $name;
-		$this->uid = $uid;
 		$this->model = $model;
 		$this->sn = $sn;
 		$this->mac = $mac;
@@ -108,25 +102,17 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 	}
 
 	/**
-	 * @return string
+	 * @return string|null
 	 */
-	public function getName(): string
+	public function getName(): ?string
 	{
 		return $this->name;
 	}
 
 	/**
-	 * @return string
+	 * @return string|null
 	 */
-	public function getUid(): string
-	{
-		return $this->uid;
-	}
-
-	/**
-	 * @return string
-	 */
-	public function getModel(): string
+	public function getModel(): ?string
 	{
 		return $this->model;
 	}
@@ -172,7 +158,6 @@ final class DiscoveredCloudDeviceEntity implements IEntity
 			'id'          => $this->getId(),
 			'local_key'   => $this->getLocalKey(),
 			'name'        => $this->getName(),
-			'uid'         => $this->getUid(),
 			'model'       => $this->getModel(),
 			'sn'          => $this->getSn(),
 			'mac'         => $this->getMac(),

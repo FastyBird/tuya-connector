@@ -39,11 +39,8 @@ final class DeviceInformationEntity implements IEntity
 	/** @var string|null */
 	private ?string $nodeId;
 
-	/** @var string */
-	private string $uid;
-
-	/** @var string */
-	private string $uuid;
+	/** @var string|null */
+	private ?string $uuid;
 
 	/** @var string|null */
 	private ?string $category;
@@ -106,8 +103,7 @@ final class DeviceInformationEntity implements IEntity
 	 * @param string $id
 	 * @param string|null $gatewayId
 	 * @param string|null $nodeId
-	 * @param string $uid
-	 * @param string $uuid
+	 * @param string|null $uuid
 	 * @param string|null $category
 	 * @param string|null $categoryName
 	 * @param string|null $name
@@ -132,8 +128,7 @@ final class DeviceInformationEntity implements IEntity
 		string $id,
 		?string $gatewayId,
 		?string $nodeId,
-		string $uid,
-		string $uuid,
+		?string $uuid,
 		?string $category,
 		?string $categoryName,
 		?string $name,
@@ -157,7 +152,6 @@ final class DeviceInformationEntity implements IEntity
 		$this->id = $id;
 		$this->gatewayId = $gatewayId;
 		$this->nodeId = $nodeId;
-		$this->uid = $uid;
 		$this->uuid = $uuid;
 		$this->category = $category;
 		$this->categoryName = $categoryName;
@@ -205,17 +199,9 @@ final class DeviceInformationEntity implements IEntity
 	}
 
 	/**
-	 * @return string
+	 * @return string|null
 	 */
-	public function getUid(): string
-	{
-		return $this->uid;
-	}
-
-	/**
-	 * @return string
-	 */
-	public function getUuid(): string
+	public function getUuid(): ?string
 	{
 		return $this->uuid;
 	}
@@ -381,7 +367,6 @@ final class DeviceInformationEntity implements IEntity
 			'id'            => $this->getId(),
 			'gateway_id'    => $this->getGatewayId(),
 			'node_id'       => $this->getNodeId(),
-			'uid'           => $this->getUid(),
 			'uuid'          => $this->getUuid(),
 			'category'      => $this->getCategory(),
 			'category_name' => $this->getCategoryName(),

@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * UserDeviceFactoryInfoEntity.php
+ * UserDeviceFactoryInfosEntity.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -25,7 +25,7 @@ use Nette;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class UserDeviceFactoryInfoEntity implements IEntity
+final class UserDeviceFactoryInfosEntity implements IEntity
 {
 
 	use Nette\SmartObject;

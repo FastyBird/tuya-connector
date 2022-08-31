@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * DiscoveredCloudDeviceEntity.php
+ * DiscoveredLocalDataPointEntity.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -10,7 +10,7 @@
  * @subpackage     Entities
  * @since          0.13.0
  *
- * @date           27.08.22
+ * @date           29.08.22
  */
 
 namespace FastyBird\TuyaConnector\Entities\Messages;
@@ -27,7 +27,7 @@ use Nette;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class DiscoveredCloudDataPointEntity implements IEntity
+final class DiscoveredLocalDataPointEntity implements IEntity
 {
 
 	use Nette\SmartObject;
@@ -47,8 +47,8 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 	/** @var string|null */
 	private ?string $unit;
 
-	/** @var string[] */
-	private array $range;
+	/** @var string|null */
+	private ?string $format;
 
 	/** @var int|float|null */
 	private int|float|null $min;
@@ -59,9 +59,6 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 	/** @var int|float|null */
 	private int|float|null $step;
 
-	/** @var int|float|null */
-	private int|float|null $scale;
-
 	/** @var bool */
 	private bool $queryable;
 
@@ -71,32 +68,16 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 	/** @var Types\MessageSourceType */
 	private Types\MessageSourceType $source;
 
-	/**
-	 * @param string $device
-	 * @param string $code
-	 * @param string $name
-	 * @param MetadataTypes\DataTypeType $dataType
-	 * @param string|null $unit
-	 * @param string[] $range
-	 * @param int|float|null $min
-	 * @param int|float|null $max
-	 * @param int|float|null $step
-	 * @param int|float|null $scale
-	 * @param bool $queryable
-	 * @param bool $settable
-	 * @param Types\MessageSourceType $source
-	 */
 	public function __construct(
 		string $device,
 		string $code,
 		string $name,
 		MetadataTypes\DataTypeType $dataType,
 		?string $unit,
-		array $range,
+		?string $format,
 		int|float|null $min,
 		int|float|null $max,
 		int|float|null $step,
-		int|float|null $scale,
 		bool $queryable,
 		bool $settable,
 		Types\MessageSourceType $source
@@ -107,11 +88,10 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 		$this->name = $name;
 		$this->dataType = $dataType;
 		$this->unit = $unit;
-		$this->range = $range;
+		$this->format = $format;
 		$this->min = $min;
 		$this->max = $max;
 		$this->step = $step;
-		$this->scale = $scale;
 		$this->queryable = $queryable;
 		$this->settable = $settable;
 		$this->source = $source;
@@ -158,11 +138,11 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 	}
 
 	/**
-	 * @return string[]
+	 * @return string|null
 	 */
-	public function getRange(): array
+	public function getFormat(): ?string
 	{
-		return $this->range;
+		return $this->format;
 	}
 
 	/**
@@ -187,14 +167,6 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 	public function getStep(): float|int|null
 	{
 		return $this->step;
-	}
-
-	/**
-	 * @return float|int|null
-	 */
-	public function getScale(): float|int|null
-	{
-		return $this->scale;
 	}
 
 	/**
@@ -233,11 +205,10 @@ final class DiscoveredCloudDataPointEntity implements IEntity
 			'name'      => $this->getName(),
 			'data_type' => $this->getDataType()->getValue(),
 			'unit'      => $this->getUnit(),
-			'range'     => $this->getRange(),
+			'format'    => $this->getFormat(),
 			'min'       => $this->getMin(),
 			'max'       => $this->getMax(),
 			'step'      => $this->getStep(),
-			'scale'     => $this->getScale(),
 			'queryable' => $this->isQueryable(),
 			'settable'  => $this->isSettable(),
 			'source'    => $this->getSource()->getValue(),

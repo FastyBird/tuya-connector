@@ -46,6 +46,9 @@ final class DiscoveredLocalDeviceEntity implements IEntity
 	/** @var string */
 	private string $version;
 
+	/** @var DiscoveredLocalDataPointEntity[] */
+	private array $dataPoints = [];
+
 	/** @var Types\MessageSourceType */
 	private Types\MessageSourceType $source;
 
@@ -123,6 +126,24 @@ final class DiscoveredLocalDeviceEntity implements IEntity
 	}
 
 	/**
+	 * @return DiscoveredLocalDataPointEntity[]
+	 */
+	public function getDataPoints(): array
+	{
+		return $this->dataPoints;
+	}
+
+	/**
+	 * @param DiscoveredLocalDataPointEntity $dataPoint
+	 *
+	 * @return void
+	 */
+	public function addDatapoint(DiscoveredLocalDataPointEntity $dataPoint): void
+	{
+		$this->dataPoints[] = $dataPoint;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function toArray(): array
@@ -133,6 +154,9 @@ final class DiscoveredLocalDeviceEntity implements IEntity
 			'product_key' => $this->productKey,
 			'encrypted'   => $this->encrypted,
 			'version'     => $this->version,
+			'data_points' => array_map(function (DiscoveredLocalDataPointEntity $item): array {
+				return $item->toArray();
+			}, $this->getDataPoints()),
 			'source'      => $this->getSource()->getValue(),
 		];
 	}

@@ -34,8 +34,16 @@
           "default" : null
         },
         "uuid" : {
-          "type" : "string",
-          "description" : "The universally unique identifier (UUID) of a specified device"
+          "oneOf" : [
+            {
+              "type" : "null"
+            },
+            {
+              "type" : "string"
+            }
+          ],
+          "description" : "The universally unique identifier (UUID) of a specified device",
+          "default" : null
         },
         "category" : {
           "oneOf" : [
