@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Clients;
 
 use FastyBird\Metadata\Entities as MetadataEntities;
+use Nette;
 use Psr\Log;
 
 /**
@@ -26,8 +27,10 @@ use Psr\Log;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class OpenApi extends Client
+final class OpenApi implements Client
 {
+
+	use Nette\SmartObject;
 
 	/** @var MetadataEntities\Modules\DevicesModule\IConnectorEntity */
 	private MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector;

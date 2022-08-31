@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 
 use FastyBird\TuyaConnector\Types;
 use Nette;
+use Ramsey\Uuid;
 
 /**
  * Discovered cloud device entity
@@ -31,11 +32,17 @@ final class DiscoveredCloudDevice implements Entity
 
 	use Nette\SmartObject;
 
+	/** @var Uuid\UuidInterface */
+	private Uuid\UuidInterface $connector;
+
 	/** @var string */
 	private string $id;
 
 	/** @var string */
 	private string $localKey;
+
+	/** @var string|null */
+	private ?string $ip;
 
 	/** @var string|null */
 	private ?string $name;
@@ -56,8 +63,10 @@ final class DiscoveredCloudDevice implements Entity
 	private Types\MessageSource $source;
 
 	/**
+	 * @param Uuid\UuidInterface $connector
 	 * @param string $id
 	 * @param string $localKey
+	 * @param string|null $ip
 	 * @param string|null $name
 	 * @param string|null $model
 	 * @param string|null $sn
@@ -66,8 +75,10 @@ final class DiscoveredCloudDevice implements Entity
 	 * @param Types\MessageSource $source
 	 */
 	public function __construct(
+		Uuid\UuidInterface $connector,
 		string $id,
 		string $localKey,
+		?string $ip,
 		?string $name,
 		?string $model,
 		?string $sn,
@@ -75,14 +86,24 @@ final class DiscoveredCloudDevice implements Entity
 		array $dataPoints,
 		Types\MessageSource $source
 	) {
+		$this->connector = $connector;
 		$this->id = $id;
 		$this->localKey = $localKey;
+		$this->ip = $ip;
 		$this->name = $name;
 		$this->model = $model;
 		$this->sn = $sn;
 		$this->mac = $mac;
 		$this->dataPoints = $dataPoints;
 		$this->source = $source;
+	}
+
+	/**
+	 * @return Uuid\UuidInterface
+	 */
+	public function getConnector(): Uuid\UuidInterface
+	{
+		return $this->connector;
 	}
 
 	/**
@@ -99,6 +120,14 @@ final class DiscoveredCloudDevice implements Entity
 	public function getLocalKey(): string
 	{
 		return $this->localKey;
+	}
+
+	/**
+	 * @return string|null
+	 */
+	public function getIp(): ?string
+	{
+		return $this->ip;
 	}
 
 	/**
@@ -155,8 +184,10 @@ final class DiscoveredCloudDevice implements Entity
 	public function toArray(): array
 	{
 		return [
+			'connector'   => $this->getConnector()->toString(),
 			'id'          => $this->getId(),
 			'local_key'   => $this->getLocalKey(),
+			'ip'          => $this->getIp(),
 			'name'        => $this->getName(),
 			'model'       => $this->getModel(),
 			'sn'          => $this->getSn(),

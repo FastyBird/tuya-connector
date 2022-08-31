@@ -538,8 +538,10 @@ final class Discovery
 			}
 
 			$message = new Entities\Messages\DiscoveredCloudDevice(
+				$this->connector->getId(),
 				$device->getId(),
 				$device->getLocalKey(),
+				$device->getIp(),
 				$device->getName(),
 				$device->getModel(),
 				$deviceFactoryInfos?->getSn(),
