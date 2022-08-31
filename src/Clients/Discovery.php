@@ -248,8 +248,8 @@ final class Discovery
 		$this->logger->debug(
 			'Starting cloud devices discovery',
 			[
-				'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'     => 'discovery-client',
+				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type'   => 'discovery-client',
 			]
 		);
 

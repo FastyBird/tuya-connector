@@ -42,8 +42,7 @@ final class OpenApi extends Client
 	public function __construct(
 		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
 		?Log\LoggerInterface $logger = null
-	)
-	{
+	) {
 		$this->connector = $connector;
 
 		$this->logger = $logger ?? new Log\NullLogger();

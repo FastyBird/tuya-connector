@@ -394,7 +394,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 					$table->addRow([
 						$foundDevices,
 						$device->getPlainId(),
-						$device->getName() ?? $device->getIdentifier(),
+							$device->getName() ?? $device->getIdentifier(),
 						'N/A',
 						is_string($ipAddress) ? $ipAddress : 'N/A',
 					]);

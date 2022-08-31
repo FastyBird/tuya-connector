@@ -285,8 +285,9 @@ final class OpenApi
 	 *
 	 * @throws Throwable
 	 */
-	public function getUserDevicesFactoryInfos(array $deviceIds): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getUserDevicesFactoryInfos(
+		array $deviceIds
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			Async\await($this->connect());
 		}
@@ -297,7 +298,7 @@ final class OpenApi
 			'GET',
 			self::USER_DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
-				'device_ids' => implode(',', $deviceIds)
+				'device_ids' => implode(',', $deviceIds),
 			]
 		)
 			->then(function (Message\ResponseInterface $response) use ($promise): void {
@@ -403,8 +404,9 @@ final class OpenApi
 	 *
 	 * @throws Throwable
 	 */
-	public function getUserDeviceSpecifications(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getUserDeviceSpecifications(
+		string $deviceId
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			Async\await($this->connect());
 		}
@@ -604,7 +606,7 @@ final class OpenApi
 			'GET',
 			self::DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
-				'device_ids' => implode(',', $deviceIds)
+				'device_ids' => implode(',', $deviceIds),
 			]
 		)
 			->then(function (Message\ResponseInterface $response) use ($promise): void {
@@ -927,7 +929,7 @@ final class OpenApi
 				try {
 					$decodedResponse = Utils\Json::decode($body, Utils\Json::FORCE_ARRAY);
 
-				} catch(Utils\JsonException) {
+				} catch (Utils\JsonException) {
 					$deferred->reject(new Exceptions\OpenApiCall('Received response body is not valid JSON'));
 
 					return;

@@ -106,8 +106,8 @@ final class ClientsConsumer
 			$this->logger->error(
 				'No consumer is registered, messages could not be consumed',
 				[
-					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'    => 'consumer',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'   => 'consumer',
 				]
 			);
 
