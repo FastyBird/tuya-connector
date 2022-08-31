@@ -15,7 +15,6 @@
 
 namespace FastyBird\TuyaConnector\API;
 
-use Exception;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
