@@ -1,38 +1,31 @@
 <?php declare(strict_types = 1);
 
 /**
- * Consumer.php
+ * DiscoveryFinished.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  * @package        FastyBird:TuyaConnector!
- * @subpackage     Consumers
+ * @subpackage     Events
  * @since          0.13.0
  *
- * @date           24.08.22
+ * @date           29.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers;
+namespace FastyBird\TuyaConnector\Events;
 
-use FastyBird\TuyaConnector\Entities;
+use Symfony\Contracts\EventDispatcher;
 
 /**
- * Clients messages consumer interface
+ * Event fired after devices discovery is finished
  *
  * @package        FastyBird:TuyaConnector!
- * @subpackage     Consumers
+ * @subpackage     Events
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-interface Consumer
+class DiscoveryFinished extends EventDispatcher\Event
 {
-
-	/**
-	 * @param Entities\Messages\Entity $entity
-	 *
-	 * @return bool
-	 */
-	public function consume(Entities\Messages\Entity $entity): bool;
 
 }

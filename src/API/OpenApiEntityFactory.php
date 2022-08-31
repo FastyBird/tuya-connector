@@ -44,18 +44,18 @@ final class OpenApiEntityFactory
 	 * @param class-string<T> $entityClass
 	 * @param Utils\ArrayHash $data
 	 *
-	 * @return Entities\API\IEntity
+	 * @return Entities\API\Entity
 	 *
-	 * @template T of Entities\API\IEntity
+	 * @template T of Entities\API\Entity
 	 *
 	 * @phpstan-return T
 	 */
 	public function build(
 		string $entityClass,
 		Utils\ArrayHash $data
-	): Entities\API\IEntity {
+	): Entities\API\Entity {
 		if (!class_exists($entityClass)) {
-			throw new Exceptions\InvalidStateException('Entity could not be created');
+			throw new Exceptions\InvalidState('Entity could not be created');
 		}
 
 		try {
@@ -66,11 +66,11 @@ final class OpenApiEntityFactory
 				$decoded = $this->convertToObject($decoded);
 			}
 		} catch (Utils\JsonException) {
-			throw new Exceptions\InvalidArgumentException('Provided entity content is not valid JSON.');
+			throw new Exceptions\InvalidArgument('Provided entity content is not valid JSON.');
 		}
 
 		if (!$decoded instanceof stdClass) {
-			throw new Exceptions\InvalidStateException('Data for entity could not be prepared');
+			throw new Exceptions\InvalidState('Data for entity could not be prepared');
 		}
 
 		try {
@@ -84,7 +84,7 @@ final class OpenApiEntityFactory
 				$entity = new $entityClass();
 			}
 		} catch (Throwable $ex) {
-			throw new Exceptions\InvalidStateException('Entity could not be created', 0, $ex);
+			throw new Exceptions\InvalidState('Entity could not be created', 0, $ex);
 		}
 
 		$properties = $this->getProperties($rc);
@@ -125,7 +125,7 @@ final class OpenApiEntityFactory
 					continue;
 
 				} catch (Throwable $ex) {
-					throw new Exceptions\InvalidStateException('Entity could not be created', 0, $ex);
+					throw new Exceptions\InvalidState('Entity could not be created', 0, $ex);
 				}
 			}
 		}

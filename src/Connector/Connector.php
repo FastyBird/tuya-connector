@@ -39,23 +39,23 @@ final class Connector implements DevicesModuleConnectors\IConnector
 	/** @var EventLoop\TimerInterface|null */
 	private ?EventLoop\TimerInterface $consumerTimer;
 
-	/** @var Clients\IClient */
-	private Clients\IClient $client;
+	/** @var Clients\Client */
+	private Clients\Client $client;
 
-	/** @var Consumers\Consumer */
-	private Consumers\Consumer $consumer;
+	/** @var Consumers\ClientsConsumer */
+	private Consumers\ClientsConsumer $consumer;
 
 	/** @var EventLoop\LoopInterface */
 	private EventLoop\LoopInterface $eventLoop;
 
 	/**
-	 * @param Clients\IClient $client
-	 * @param Consumers\Consumer $consumer
+	 * @param Clients\Client $client
+	 * @param Consumers\ClientsConsumer $consumer
 	 * @param EventLoop\LoopInterface $eventLoop
 	 */
 	public function __construct(
-		Clients\IClient $client,
-		Consumers\Consumer $consumer,
+		Clients\Client $client,
+		Consumers\ClientsConsumer $consumer,
 		EventLoop\LoopInterface $eventLoop
 	) {
 		$this->client = $client;

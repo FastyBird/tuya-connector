@@ -19,11 +19,11 @@ final class ServicesTest extends BaseTestCase
 	{
 		$container = $this->createContainer();
 
-		Assert::notNull($container->getByType(Hydrators\TuyaConnectorHydrator::class));
-		Assert::notNull($container->getByType(Hydrators\TuyaDeviceHydrator::class));
+		Assert::notNull($container->getByType(Hydrators\TuyaConnector::class));
+		Assert::notNull($container->getByType(Hydrators\TuyaDevice::class));
 
-		Assert::notNull($container->getByType(Schemas\TuyaConnectorSchema::class));
-		Assert::notNull($container->getByType(Schemas\TuyaDeviceSchema::class));
+		Assert::notNull($container->getByType(Schemas\TuyaConnector::class));
+		Assert::notNull($container->getByType(Schemas\TuyaDevice::class));
 	}
 
 }

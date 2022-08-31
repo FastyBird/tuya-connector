@@ -98,67 +98,67 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 
 		// Consumers
 		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())
-			->setType(Consumers\Consumer::class);
+			->setType(Consumers\ClientsConsumer::class);
 
 		// API
 		$builder->addDefinition($this->prefix('api.openApi.api'))
-			->setType(API\OpenApiApiFactory::class);
+			->setType(API\OpenApiFactory::class);
 
 		$builder->addDefinition($this->prefix('api.openApi.entityFactory'))
 			->setType(API\OpenApiEntityFactory::class);
 
 		// Clients
 		$builder->addFactoryDefinition($this->prefix('client.local'))
-			->setImplement(Clients\LocalClientFactory::class)
+			->setImplement(Clients\LocalFactory::class)
 			->getResultDefinition()
-			->setType(Clients\LocalClient::class);
+			->setType(Clients\Local::class);
 
 		$builder->addFactoryDefinition($this->prefix('client.openApi'))
-			->setImplement(Clients\OpenApiClientFactory::class)
+			->setImplement(Clients\OpenApiFactory::class)
 			->getResultDefinition()
-			->setType(Clients\OpenApiClient::class);
+			->setType(Clients\OpenApi::class);
 
 		$builder->addFactoryDefinition($this->prefix('client.discover'))
-			->setImplement(Clients\DiscoveryClientFactory::class)
+			->setImplement(Clients\DiscoveryFactory::class)
 			->getResultDefinition()
-			->setType(Clients\DiscoveryClient::class);
+			->setType(Clients\Discovery::class);
 
 		// API schemas
 		$builder->addDefinition($this->prefix('schemas.connector.tuya'), new DI\Definitions\ServiceDefinition())
-			->setType(Schemas\TuyaConnectorSchema::class);
+			->setType(Schemas\TuyaConnector::class);
 
 		$builder->addDefinition($this->prefix('schemas.device.tuya'), new DI\Definitions\ServiceDefinition())
-			->setType(Schemas\TuyaDeviceSchema::class);
+			->setType(Schemas\TuyaDevice::class);
 
 		// API hydrators
 		$builder->addDefinition($this->prefix('hydrators.connector.tuya'), new DI\Definitions\ServiceDefinition())
-			->setType(Hydrators\TuyaConnectorHydrator::class);
+			->setType(Hydrators\TuyaConnector::class);
 
 		$builder->addDefinition($this->prefix('hydrators.device.tuya'), new DI\Definitions\ServiceDefinition())
-			->setType(Hydrators\TuyaDeviceHydrator::class);
+			->setType(Hydrators\TuyaDevice::class);
 
 		// Helpers
 		$builder->addDefinition($this->prefix('helpers.database'), new DI\Definitions\ServiceDefinition())
-			->setType(Helpers\DatabaseHelper::class);
+			->setType(Helpers\Database::class);
 
 		$builder->addDefinition($this->prefix('helpers.connector'), new DI\Definitions\ServiceDefinition())
-			->setType(Helpers\ConnectorHelper::class);
+			->setType(Helpers\Connector::class);
 
 		$builder->addDefinition($this->prefix('helpers.device'), new DI\Definitions\ServiceDefinition())
-			->setType(Helpers\DeviceHelper::class);
+			->setType(Helpers\Device::class);
 
 		$builder->addDefinition($this->prefix('helpers.property'), new DI\Definitions\ServiceDefinition())
-			->setType(Helpers\PropertyHelper::class);
+			->setType(Helpers\Property::class);
 
 		// Console commands
 		$builder->addDefinition($this->prefix('commands.initialize'), new DI\Definitions\ServiceDefinition())
-			->setType(Commands\InitializeCommand::class);
+			->setType(Commands\Initialize::class);
 
 		$builder->addDefinition($this->prefix('commands.discovery'), new DI\Definitions\ServiceDefinition())
-			->setType(Commands\DiscoveryCommand::class);
+			->setType(Commands\Discovery::class);
 
 		$builder->addDefinition($this->prefix('commands.execute'), new DI\Definitions\ServiceDefinition())
-			->setType(Commands\ExecuteCommand::class);
+			->setType(Commands\Execute::class);
 	}
 
 	/**
