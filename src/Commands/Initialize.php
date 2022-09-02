@@ -225,9 +225,15 @@ class Initialize extends Console\Command\Command
 
 		$name = $io->askQuestion($question);
 
-		$accessId = $this->askAccessId($io);
+		$accessId = $accessSecret = $uid = null;
 
-		$accessSecret = $this->askAccessSecret($io);
+		if ($mode->equalsValue(Types\ClientMode::MODE_CLOUD)) {
+			$accessId = $this->askAccessId($io);
+
+			$accessSecret = $this->askAccessSecret($io);
+
+			$uid = $this->askUid($io);
+		}
 
 		try {
 			// Start transaction connection to the database
@@ -247,24 +253,39 @@ class Initialize extends Console\Command\Command
 				'connector'  => $connector,
 			]));
 
-			$this->propertiesManager->create(Utils\ArrayHash::from([
-				'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
-				'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID,
-				'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
-				'value'      => $accessId,
-				'connector'  => $connector,
-			]));
+			if ($mode->equalsValue(Types\ClientMode::MODE_CLOUD)) {
+				$this->propertiesManager->create(Utils\ArrayHash::from([
+					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+					'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID,
+					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+					'value'      => $accessId,
+					'connector'  => $connector,
+				]));
 
-			$this->propertiesManager->create(Utils\ArrayHash::from([
-				'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
-				'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET,
-				'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
-				'value'      => $accessSecret,
-				'connector'  => $connector,
-			]));
+				$this->propertiesManager->create(Utils\ArrayHash::from([
+					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+					'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET,
+					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+					'value'      => $accessSecret,
+					'connector'  => $connector,
+				]));
+
+				$this->propertiesManager->create(Utils\ArrayHash::from([
+					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+					'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_UID,
+					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+					'value'      => $uid,
+					'connector'  => $connector,
+				]));
+			}
 
 			$this->controlsManager->create(Utils\ArrayHash::from([
 				'name'      => Types\ConnectorControlName::NAME_REBOOT,
+				'connector' => $connector,
+			]));
+
+			$this->controlsManager->create(Utils\ArrayHash::from([
+				'name'      => Types\ConnectorControlName::NAME_DISCOVER,
 				'connector' => $connector,
 			]));
 
@@ -419,52 +440,83 @@ class Initialize extends Console\Command\Command
 			}
 		}
 
-		$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
-		$findPropertyQuery->forConnector($connector);
-		$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID);
+		$accessIdProperty = $accessSecretProperty = $uidProperty = null;
+		$accessId = $accessSecret = $uid = null;
 
-		$accessIdProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
+		if (
+			(
+				$modeProperty !== null
+				&& $modeProperty->getValue() === Types\ClientMode::MODE_CLOUD
+			) || (
+				$mode !== null
+				&& $mode->equalsValue(Types\ClientMode::MODE_CLOUD)
+			)
+		) {
+			$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
+			$findPropertyQuery->forConnector($connector);
+			$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID);
 
-		if ($accessIdProperty === null) {
-			$changeAccessId = true;
+			$accessIdProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
 
-		} else {
-			$question = new Console\Question\ConfirmationQuestion(
-				'Do you want to change connector cloud Access ID?',
-				false
-			);
+			if ($accessIdProperty === null) {
+				$changeAccessId = true;
 
-			$changeAccessId = $io->askQuestion($question);
-		}
+			} else {
+				$question = new Console\Question\ConfirmationQuestion(
+					'Do you want to change connector cloud Access ID?',
+					false
+				);
 
-		$accessId = null;
+				$changeAccessId = $io->askQuestion($question);
+			}
 
-		if ($changeAccessId) {
-			$accessId = $this->askAccessId($io);
-		}
+			if ($changeAccessId) {
+				$accessId = $this->askAccessId($io);
+			}
 
-		$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
-		$findPropertyQuery->forConnector($connector);
-		$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET);
+			$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
+			$findPropertyQuery->forConnector($connector);
+			$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET);
 
-		$accessSecretProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
+			$accessSecretProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
 
-		if ($accessSecretProperty === null) {
-			$changeAccessSecret = true;
+			if ($accessSecretProperty === null) {
+				$changeAccessSecret = true;
 
-		} else {
-			$question = new Console\Question\ConfirmationQuestion(
-				'Do you want to change connector cloud Access Secret?',
-				false
-			);
+			} else {
+				$question = new Console\Question\ConfirmationQuestion(
+					'Do you want to change connector cloud Access Secret?',
+					false
+				);
 
-			$changeAccessSecret = $io->askQuestion($question);
-		}
+				$changeAccessSecret = $io->askQuestion($question);
+			}
 
-		$accessSecret = null;
+			if ($changeAccessSecret) {
+				$accessSecret = $this->askAccessSecret($io);
+			}
 
-		if ($changeAccessSecret) {
-			$accessSecret = $this->askAccessSecret($io);
+			$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
+			$findPropertyQuery->forConnector($connector);
+			$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET);
+
+			$uidProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
+
+			if ($uidProperty === null) {
+				$changeUid = true;
+
+			} else {
+				$question = new Console\Question\ConfirmationQuestion(
+					'Do you want to change connector cloud Access Secret?',
+					false
+				);
+
+				$changeUid = $io->askQuestion($question);
+			}
+
+			if ($changeUid) {
+				$uid = $this->askUid($io);
+			}
 		}
 
 		try {
@@ -494,40 +546,80 @@ class Initialize extends Console\Command\Command
 				]));
 			}
 
-			if ($accessIdProperty === null) {
-				if ($accessId === null) {
-					$accessId = $this->askAccessId($io);
+			if (
+				(
+					$modeProperty !== null
+					&& $modeProperty->getValue() === Types\ClientMode::MODE_CLOUD
+				) || (
+					$mode !== null
+					&& $mode->equalsValue(Types\ClientMode::MODE_CLOUD)
+				)
+			) {
+				if ($accessIdProperty === null) {
+					if ($accessId === null) {
+						$accessId = $this->askAccessId($io);
+					}
+
+					$this->propertiesManager->create(Utils\ArrayHash::from([
+						'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+						'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID,
+						'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+						'value'      => $accessId,
+						'connector'  => $connector,
+					]));
+				} elseif ($accessId !== null) {
+					$this->propertiesManager->update($accessIdProperty, Utils\ArrayHash::from([
+						'value' => $accessId,
+					]));
 				}
 
-				$this->propertiesManager->create(Utils\ArrayHash::from([
-					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
-					'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID,
-					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
-					'value'      => $accessId,
-					'connector'  => $connector,
-				]));
-			} elseif ($mode !== null) {
-				$this->propertiesManager->update($accessIdProperty, Utils\ArrayHash::from([
-					'value' => $accessId,
-				]));
-			}
+				if ($accessSecretProperty === null) {
+					if ($accessSecret === null) {
+						$accessSecret = $this->askAccessSecret($io);
+					}
 
-			if ($accessSecretProperty === null) {
-				if ($accessSecret === null) {
-					$accessSecret = $this->askAccessSecret($io);
+					$this->propertiesManager->create(Utils\ArrayHash::from([
+						'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+						'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET,
+						'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+						'value'      => $accessSecret,
+						'connector'  => $connector,
+					]));
+				} elseif ($accessSecret !== null) {
+					$this->propertiesManager->update($accessSecretProperty, Utils\ArrayHash::from([
+						'value' => $accessSecret,
+					]));
 				}
 
-				$this->propertiesManager->create(Utils\ArrayHash::from([
-					'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
-					'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET,
-					'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
-					'value'      => $accessSecret,
-					'connector'  => $connector,
-				]));
-			} elseif ($mode !== null) {
-				$this->propertiesManager->update($accessSecretProperty, Utils\ArrayHash::from([
-					'value' => $accessSecret,
-				]));
+				if ($uidProperty === null) {
+					if ($uid === null) {
+						$uid = $this->askAccessSecret($io);
+					}
+
+					$this->propertiesManager->create(Utils\ArrayHash::from([
+						'entity'     => DevicesModuleEntities\Connectors\Properties\StaticProperty::class,
+						'identifier' => Types\ConnectorPropertyIdentifier::IDENTIFIER_UID,
+						'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
+						'value'      => $uid,
+						'connector'  => $connector,
+					]));
+				} elseif ($uid !== null) {
+					$this->propertiesManager->update($uidProperty, Utils\ArrayHash::from([
+						'value' => $uid,
+					]));
+				}
+			} else {
+				if ($accessIdProperty !== null) {
+					$this->propertiesManager->delete($accessIdProperty);
+				}
+
+				if ($accessSecretProperty !== null) {
+					$this->propertiesManager->delete($accessSecretProperty);
+				}
+
+				if ($uidProperty !== null) {
+					$this->propertiesManager->delete($uidProperty);
+				}
 			}
 
 			// Commit all changes into database
@@ -715,6 +807,18 @@ class Initialize extends Console\Command\Command
 	private function askAccessSecret(Style\SymfonyStyle $io): string
 	{
 		$question = new Console\Question\Question('Provide cloud authentication Access Secret');
+
+		return strval($io->askQuestion($question));
+	}
+
+	/**
+	 * @param Style\SymfonyStyle $io
+	 *
+	 * @return string
+	 */
+	private function askUid(Style\SymfonyStyle $io): string
+	{
+		$question = new Console\Question\Question('Provide cloud user identification');
 
 		return strval($io->askQuestion($question));
 	}
