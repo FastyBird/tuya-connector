@@ -593,7 +593,7 @@ class Initialize extends Console\Command\Command
 
 				if ($uidProperty === null) {
 					if ($uid === null) {
-						$uid = $this->askAccessSecret($io);
+						$uid = $this->askUid($io);
 					}
 
 					$this->propertiesManager->create(Utils\ArrayHash::from([
