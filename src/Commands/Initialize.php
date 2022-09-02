@@ -498,7 +498,7 @@ class Initialize extends Console\Command\Command
 
 			$findPropertyQuery = new DevicesModuleQueries\FindConnectorPropertiesQuery();
 			$findPropertyQuery->forConnector($connector);
-			$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET);
+			$findPropertyQuery->byIdentifier(Types\ConnectorPropertyIdentifier::IDENTIFIER_UID);
 
 			$uidProperty = $this->propertiesRepository->findOneBy($findPropertyQuery);
 
@@ -507,7 +507,7 @@ class Initialize extends Console\Command\Command
 
 			} else {
 				$question = new Console\Question\ConfirmationQuestion(
-					'Do you want to change connector cloud Access Secret?',
+					'Do you want to change connector cloud user identifier?',
 					false
 				);
 
