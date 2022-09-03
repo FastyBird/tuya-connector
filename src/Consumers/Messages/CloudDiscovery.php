@@ -320,7 +320,7 @@ final class CloudDiscovery implements Consumer
 			Types\DeviceAttributeIdentifier::IDENTIFIER_SERIAL_NUMBER
 		);
 
-		$this->databaseHelper->transaction(function () use ($entity, $deviceEntity): void {
+		$this->databaseHelper->transaction(function () use ($entity, $deviceEntity): bool {
 			$findChannelQuery = new DevicesModuleQueries\FindChannelsQuery();
 			$findChannelQuery->byIdentifier(Types\DataPoint::DATA_POINT_CLOUD);
 			$findChannelQuery->forDevice($deviceEntity);
@@ -403,6 +403,8 @@ final class CloudDiscovery implements Consumer
 					}
 				}
 			}
+
+			return true;
 		});
 
 		$this->logger->debug(
