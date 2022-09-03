@@ -29,6 +29,7 @@ use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use Ramsey\Uuid;
+use React\Async;
 use React\EventLoop;
 use Symfony\Component\Console;
 use Symfony\Component\Console\Input;
@@ -48,7 +49,7 @@ use Throwable;
 class Discovery extends Console\Command\Command implements EventDispatcher\EventSubscriberInterface
 {
 
-	private const DISCOVERY_WAITING_INTERVAL = 30.0;
+	private const DISCOVERY_WAITING_INTERVAL = 5.0;
 	private const DISCOVERY_MAX_PROCESSING_INTERVAL = 30.0;
 
 	private const QUEUE_PROCESSING_INTERVAL = 0.01;
@@ -297,7 +298,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 
 		$progressBar = new Console\Helper\ProgressBar(
 			$output,
-			intval(self::DISCOVERY_WAITING_INTERVAL * 60)
+			intval(self::DISCOVERY_MAX_PROCESSING_INTERVAL * 60)
 		);
 
 		$progressBar->setFormat('[%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %');
@@ -333,9 +334,9 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 
 			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
 				self::QUEUE_PROCESSING_INTERVAL,
-				function (): void {
+				Async\async(function (): void {
 					$this->consumer->consume();
-				}
+				})
 			);
 
 			$this->progressBarTimer = $this->eventLoop->addPeriodicTimer(
@@ -346,12 +347,12 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 			);
 
 			$this->eventLoop->addTimer(
-				self::DISCOVERY_WAITING_INTERVAL,
-				function (): void {
+				self::DISCOVERY_MAX_PROCESSING_INTERVAL,
+				Async\async(function (): void {
 					$this->client?->disconnect();
 
 					$this->checkAndTerminate();
-				}
+				})
 			);
 
 			$this->eventLoop->run();
@@ -391,11 +392,13 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 						Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
 					);
 
+					$hardwareModelAttribute = $device->findAttribute(Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MODEL);
+
 					$table->addRow([
 						$foundDevices,
 						$device->getPlainId(),
-							$device->getName() ?? $device->getIdentifier(),
-						'N/A',
+						$device->getName() ?? $device->getIdentifier(),
+						$hardwareModelAttribute !== null ? $hardwareModelAttribute->getContent(true) : 'N/A',
 						is_string($ipAddress) ? $ipAddress : 'N/A',
 					]);
 				}
@@ -461,7 +464,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 	 *
 	 * @return void
 	 */
-	private function discoveryFinished(Events\DiscoveryFinished $event): void
+	public function discoveryFinished(Events\DiscoveryFinished $event): void
 	{
 		$this->client?->disconnect();
 
@@ -487,8 +490,7 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 		} else {
 			if (
 				$this->executedTime !== null
-				&& $this->dateTimeFactory->getNow()
-					->getTimestamp() - $this->executedTime->getTimestamp() > self::DISCOVERY_MAX_PROCESSING_INTERVAL
+				&& $this->dateTimeFactory->getNow()->getTimestamp() - $this->executedTime->getTimestamp() > self::DISCOVERY_MAX_PROCESSING_INTERVAL
 			) {
 				$this->logger->error('Discovery exceeded reserved time and have been terminated', [
 					'source' => Metadata\Constants::MODULE_DEVICES_SOURCE,

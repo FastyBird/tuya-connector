@@ -214,6 +214,46 @@ final class DiscoveredCloudDataPoint implements Entity
 	}
 
 	/**
+	 * @return Array<int, Array<int, string|int|float|null>>|string[]|null
+	 */
+	public function getFormat(): ?array
+	{
+		if (
+			(
+				$this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_CHAR)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_UCHAR)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_SHORT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_USHORT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_INT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_UINT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_FLOAT)
+			) && (
+				$this->getMin() !== null
+				|| $this->getMax() !== null
+			)
+		) {
+			return [
+				[
+					MetadataTypes\DataTypeShortType::DATA_TYPE_FLOAT,
+					$this->getMin(),
+				],
+				[
+					MetadataTypes\DataTypeShortType::DATA_TYPE_FLOAT,
+					$this->getMax(),
+				]
+			];
+
+		} elseif (
+			$this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_ENUM)
+			&& $this->getRange() !== []
+		) {
+			return $this->getRange();
+		}
+
+		return null;
+	}
+
+	/**
 	 * {@inheritDoc}
 	 */
 	public function getSource(): Types\MessageSource
