@@ -240,7 +240,7 @@ final class DiscoveredCloudDataPoint implements Entity
 				[
 					MetadataTypes\DataTypeShortType::DATA_TYPE_FLOAT,
 					$this->getMax(),
-				]
+				],
 			];
 
 		} elseif (
