@@ -33,6 +33,7 @@ class DevicePropertyIdentifier extends Consistence\Enum\Enum
 	 * Define device states
 	 */
 	public const IDENTIFIER_IP_ADDRESS = MetadataTypes\DevicePropertyIdentifierType::IDENTIFIER_IP_ADDRESS;
+	public const IDENTIFIER_STATE = MetadataTypes\DevicePropertyIdentifierType::IDENTIFIER_STATE;
 	public const IDENTIFIER_PROTOCOL_VERSION = 'protocol_version';
 	public const IDENTIFIER_LOCAL_KEY = 'local_key';
 	public const IDENTIFIER_USER_IDENTIFIER = 'user_identifier';

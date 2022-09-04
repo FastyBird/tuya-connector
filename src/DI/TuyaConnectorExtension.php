@@ -24,7 +24,9 @@ use FastyBird\TuyaConnector\Connector;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Hydrators;
+use FastyBird\TuyaConnector\Mappers;
 use FastyBird\TuyaConnector\Schemas;
+use FastyBird\TuyaConnector\Subscribers;
 use Nette;
 use Nette\DI;
 use Nette\Schema;
@@ -103,6 +105,12 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		$builder->addDefinition($this->prefix('consumer.discovery.cloudDevice'), new DI\Definitions\ServiceDefinition())
 			->setType(Consumers\Messages\CloudDiscovery::class);
 
+		$builder->addDefinition($this->prefix('consumer.discovery.status'), new DI\Definitions\ServiceDefinition())
+			->setType(Consumers\Messages\Status::class);
+
+		$builder->addDefinition($this->prefix('consumer.discovery.state'), new DI\Definitions\ServiceDefinition())
+			->setType(Consumers\Messages\State::class);
+
 		// API
 		$builder->addDefinition($this->prefix('api.openApi.api'))
 			->setType(API\OpenApiFactory::class);
@@ -125,6 +133,10 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			->setImplement(Clients\DiscoveryFactory::class)
 			->getResultDefinition()
 			->setType(Clients\Discovery::class);
+
+		// Events subscribers
+		$builder->addDefinition($this->prefix('subscribers.properties'), new DI\Definitions\ServiceDefinition())
+			->setType(Subscribers\Properties::class);
 
 		// API schemas
 		$builder->addDefinition($this->prefix('schemas.connector.tuya'), new DI\Definitions\ServiceDefinition())
@@ -152,6 +164,10 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 
 		$builder->addDefinition($this->prefix('helpers.property'), new DI\Definitions\ServiceDefinition())
 			->setType(Helpers\Property::class);
+
+		// Mappers
+		$builder->addDefinition($this->prefix('mappers.dataPoint'), new DI\Definitions\ServiceDefinition())
+			->setType(Mappers\DataPoint::class);
 
 		// Console commands
 		$builder->addDefinition($this->prefix('commands.initialize'), new DI\Definitions\ServiceDefinition())

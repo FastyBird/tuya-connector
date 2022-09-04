@@ -823,7 +823,7 @@ final class OpenApi
 	/**
 	 * @param string $deviceId
 	 * @param string $code
-	 * @param string|int|bool $value
+	 * @param string|int|float|bool $value
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
@@ -832,7 +832,7 @@ final class OpenApi
 	public function setDeviceStatus(
 		string $deviceId,
 		string $code,
-		string|int|bool $value
+		string|int|float|bool $value
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			Async\await($this->connect());
@@ -840,7 +840,7 @@ final class OpenApi
 
 		$promise = new Promise\Deferred();
 
-		$body = json_encode([
+		$body = Utils\Json::encode([
 			'commands' => [
 				[
 					'code'  => $code,

@@ -48,13 +48,6 @@ interface Client
 	public function isConnected(): bool;
 
 	/**
-	 * Discover new devices
-	 *
-	 * @return void
-	 */
-	public function discover(): void;
-
-	/**
 	 * Create servers/clients
 	 *
 	 * @return void
