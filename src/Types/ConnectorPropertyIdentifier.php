@@ -37,6 +37,7 @@ class ConnectorPropertyIdentifier extends Consistence\Enum\Enum
 	public const IDENTIFIER_UID = 'uid';
 	public const IDENTIFIER_OPENAPI_ENDPOINT = 'openapi_endpoint';
 	public const IDENTIFIER_OPENPULSAR_ENDPOINT = 'openpulsar_endpoint';
+	public const IDENTIFIER_OPENPULSAR_TOPIC = 'openpulsar_topic';
 
 	/**
 	 * @return string

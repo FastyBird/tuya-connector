@@ -77,6 +77,13 @@ final class Connector
 				return Types\OpenPulsarEndpoint::ENDPOINT_EUROPE;
 			}
 
+			if (
+				$type->getValue() === Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC
+				&& !Types\OpenPulsarEndpoint::isValidValue($configuration->getValue())
+			) {
+				return Types\OpenPulsarTopic::TOPIC_PROD;
+			}
+
 			return $configuration->getValue();
 		}
 
@@ -86,6 +93,10 @@ final class Connector
 
 		if ($type->getValue() === Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_ENDPOINT) {
 			return Types\OpenPulsarEndpoint::ENDPOINT_EUROPE;
+		}
+
+		if ($type->getValue() === Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC) {
+			return Types\OpenPulsarTopic::TOPIC_PROD;
 		}
 
 		return null;
