@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * OpenApi.php
+ * Cloud.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com

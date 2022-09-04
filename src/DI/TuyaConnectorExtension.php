@@ -116,10 +116,10 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			->getResultDefinition()
 			->setType(Clients\Local::class);
 
-		$builder->addFactoryDefinition($this->prefix('client.openApi'))
-			->setImplement(Clients\OpenApiFactory::class)
+		$builder->addFactoryDefinition($this->prefix('client.cloud'))
+			->setImplement(Clients\CloudFactory::class)
 			->getResultDefinition()
-			->setType(Clients\OpenApi::class);
+			->setType(Clients\Cloud::class);
 
 		$builder->addFactoryDefinition($this->prefix('client.discover'))
 			->setImplement(Clients\DiscoveryFactory::class)

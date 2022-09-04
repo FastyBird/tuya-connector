@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * OpenApiFactory.php
+ * CloudFactory.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -19,14 +19,14 @@ use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\TuyaConnector\Types;
 
 /**
- * Cloud OpenAPI devices client factory
+ * Cloud devices client factory
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Clients
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-interface OpenApiFactory extends ClientFactory
+interface CloudFactory extends ClientFactory
 {
 
 	public const MODE = Types\ClientMode::MODE_CLOUD;
@@ -34,8 +34,8 @@ interface OpenApiFactory extends ClientFactory
 	/**
 	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
 	 *
-	 * @return OpenApi
+	 * @return Cloud
 	 */
-	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): OpenApi;
+	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): Cloud;
 
 }

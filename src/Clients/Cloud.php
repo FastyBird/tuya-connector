@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * OpenApi.php
+ * Cloud.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -30,14 +30,14 @@ use React\Socket;
 use Throwable;
 
 /**
- * Cloud OpenAPI devices client
+ * Cloud devices client
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Clients
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class OpenApi implements Client
+final class Cloud implements Client
 {
 
 	use Nette\SmartObject;
