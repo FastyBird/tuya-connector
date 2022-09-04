@@ -840,17 +840,21 @@ final class OpenApi
 
 		$promise = new Promise\Deferred();
 
-		$body = Utils\Json::encode([
-			'commands' => [
-				[
-					'code'  => $code,
-					'value' => $value,
+		try {
+			$body = Utils\Json::encode([
+				'commands' => [
+					[
+						'code'  => $code,
+						'value' => $value,
+					],
 				],
-			],
-		]);
-
-		if ($body === false) {
-			return Promise\reject(new Exceptions\OpenApiCall('Message body could not be encoded'));
+			]);
+		} catch (Utils\JsonException $ex) {
+			return Promise\reject(new Exceptions\OpenApiCall(
+				'Message body could not be encoded',
+				$ex->getCode(),
+				$ex
+			));
 		}
 
 		$this->callRequest(

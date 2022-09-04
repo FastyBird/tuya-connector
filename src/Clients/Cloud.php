@@ -241,7 +241,7 @@ final class Cloud implements Client
 				$this->pingTimer = $this->eventLoop->addPeriodicTimer(
 					self::PING_INTERVAL,
 					function () use ($connection): void {
-						$res = $connection->send(new RFC6455\Messaging\Frame(
+						$connection->send(new RFC6455\Messaging\Frame(
 							strval($this->connectorHelper->getConfiguration(
 								$this->connector->getId(),
 								Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
@@ -368,7 +368,6 @@ final class Cloud implements Client
 	 */
 	private function processDevice(MetadataEntities\Modules\DevicesModule\IDeviceEntity $device): bool
 	{
-		return true;
 		if (
 			$this->deviceConnectionStateManager->getState($device)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
 		) {
@@ -496,7 +495,7 @@ final class Cloud implements Client
 				$this->getSchemaFilePath(self::WS_MESSAGE_SCHEMA_FILENAME)
 			);
 
-		} catch (MetadataExceptions\LogicException|MetadataExceptions\MalformedInputException|MetadataExceptions\InvalidDataException|Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received WS message',
 				[
@@ -551,7 +550,7 @@ final class Cloud implements Client
 			return;
 		}
 
-		$payload = base64_decode($message->offsetGet('payload'), true);
+		$payload = base64_decode(strval($message->offsetGet('payload')), true);
 
 		if ($payload === false) {
 			$this->logger->error(
@@ -582,7 +581,7 @@ final class Cloud implements Client
 				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_SCHEMA_FILENAME)
 			);
 
-		} catch (MetadataExceptions\LogicException|MetadataExceptions\MalformedInputException|MetadataExceptions\InvalidDataException|Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received WS message payload',
 				[
@@ -613,7 +612,7 @@ final class Cloud implements Client
 			return;
 		}
 
-		$data = base64_decode($payload->offsetGet('data'), true);
+		$data = base64_decode(strval($payload->offsetGet('data')), true);
 
 		if ($data === false) {
 			$this->logger->error(
@@ -668,7 +667,7 @@ final class Cloud implements Client
 				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_DATA_SCHEMA_FILENAME)
 			);
 
-		} catch (MetadataExceptions\LogicException|MetadataExceptions\MalformedInputException|MetadataExceptions\InvalidDataException|Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received WS message payload data decrypted',
 				[
@@ -744,18 +743,18 @@ final class Cloud implements Client
 	private function buildWsTopicUrl(): string
 	{
 		return $this->connectorHelper->getConfiguration(
-				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_ENDPOINT)
-			) . 'ws/v2/consumer/persistent/' . $this->connectorHelper->getConfiguration(
-				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
-			) . '/out/' . $this->connectorHelper->getConfiguration(
-				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC)
-			) . '/' . $this->connectorHelper->getConfiguration(
-				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
-			) . '-sub?ackTimeoutMillis=3000&subscriptionType=Failover';
+			$this->connector->getId(),
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_ENDPOINT)
+		) . 'ws/v2/consumer/persistent/' . $this->connectorHelper->getConfiguration(
+			$this->connector->getId(),
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+		) . '/out/' . $this->connectorHelper->getConfiguration(
+			$this->connector->getId(),
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC)
+		) . '/' . $this->connectorHelper->getConfiguration(
+			$this->connector->getId(),
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+		) . '-sub?ackTimeoutMillis=3000&subscriptionType=Failover';
 	}
 
 	/**
@@ -764,14 +763,14 @@ final class Cloud implements Client
 	private function genPwd(): string
 	{
 		$passString = $this->connectorHelper->getConfiguration(
+			$this->connector->getId(),
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+		) . md5(
+			strval($this->connectorHelper->getConfiguration(
 				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
-			) . md5(
-				strval($this->connectorHelper->getConfiguration(
-					$this->connector->getId(),
-					Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET)
-				))
-			);
+				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET)
+			))
+		);
 
 		return Utils\Strings::substring(md5($passString), 8, 16);
 	}

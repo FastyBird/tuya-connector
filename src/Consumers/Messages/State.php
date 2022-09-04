@@ -16,14 +16,10 @@
 namespace FastyBird\TuyaConnector\Consumers\Messages;
 
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
-use FastyBird\DevicesModule\Utilities as DevicesModuleUtilities;
 use FastyBird\Metadata;
 use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Mappers;
 use Nette;
-use Nette\Utils;
 use Psr\Log;
 
 /**
