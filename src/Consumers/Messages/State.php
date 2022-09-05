@@ -17,8 +17,10 @@ namespace FastyBird\TuyaConnector\Consumers\Messages;
 
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
+use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Helpers;
 use Nette;
 use Psr\Log;
 
@@ -35,8 +37,20 @@ final class State implements Consumer
 
 	use Nette\SmartObject;
 
+	/** @var Helpers\Property */
+	private Helpers\Property $propertyStateHelper;
+
 	/** @var DevicesModuleModels\DataStorage\IDevicesRepository */
 	private DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository;
+
+	/** @var DevicesModuleModels\DataStorage\IDevicePropertiesRepository */
+	private DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository;
+
+	/** @var DevicesModuleModels\DataStorage\IChannelsRepository */
+	private DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository;
+
+	/** @var DevicesModuleModels\DataStorage\IChannelPropertiesRepository */
+	private DevicesModuleModels\DataStorage\IChannelPropertiesRepository$channelPropertiesRepository;
 
 	/** @var DevicesModuleModels\States\DeviceConnectionStateManager */
 	private DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager;
@@ -45,16 +59,29 @@ final class State implements Consumer
 	private Log\LoggerInterface $logger;
 
 	/**
+	 * @param Helpers\Property $propertyStateHelper
 	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository
+	 * @param DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository
+	 * @param DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository
+	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository
 	 * @param DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
+		Helpers\Property $propertyStateHelper,
 		DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository,
+		DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository,
+		DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository,
+		DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository,
 		DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
 		?Log\LoggerInterface $logger
 	) {
+		$this->propertyStateHelper = $propertyStateHelper;
+
 		$this->devicesDataStorageRepository = $devicesDataStorageRepository;
+		$this->devicePropertiesRepository = $devicePropertiesRepository;
+		$this->channelsRepository = $channelsRepository;
+		$this->channelPropertiesRepository = $channelPropertiesRepository;
 
 		$this->deviceConnectionStateManager = $deviceConnectionStateManager;
 
@@ -79,15 +106,51 @@ final class State implements Consumer
 			return true;
 		}
 
+		$actualDeviceState = Metadata\Types\ConnectionStateType::get($entity->isOnline() ? Metadata\Types\ConnectionStateType::STATE_CONNECTED : Metadata\Types\ConnectionStateType::STATE_DISCONNECTED);
+
 		// Check device state...
 		if (
-			!$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(Metadata\Types\ConnectionStateType::STATE_CONNECTED)
+			!$this->deviceConnectionStateManager->getState($deviceItem)->equals($actualDeviceState)
 		) {
 			// ... and if it is not ready, set it to ready
 			$this->deviceConnectionStateManager->setState(
 				$deviceItem,
-				Metadata\Types\ConnectionStateType::get($entity->isOnline() ? Metadata\Types\ConnectionStateType::STATE_CONNECTED : Metadata\Types\ConnectionStateType::STATE_DISCONNECTED)
+				$actualDeviceState
 			);
+
+			if ($actualDeviceState->equalsValue(Metadata\Types\ConnectionStateType::STATE_DISCONNECTED)) {
+				$devicePropertiesItems = $this->devicePropertiesRepository->findAllByDevice(
+					$deviceItem->getId(),
+					MetadataEntities\Modules\DevicesModule\DeviceDynamicPropertyEntity::class
+				);
+
+				foreach ($devicePropertiesItems as $propertyItem) {
+					$this->propertyStateHelper->setValue(
+						$propertyItem,
+						Nette\Utils\ArrayHash::from([
+							'valid' => false,
+						])
+					);
+				}
+
+				$channelItems = $this->channelsRepository->findAllByDevice($deviceItem->getId());
+
+				foreach ($channelItems as $channelItem) {
+					$channelProperties = $this->channelPropertiesRepository->findAllByChannel(
+						$channelItem->getId(),
+						MetadataEntities\Modules\DevicesModule\ChannelDynamicPropertyEntity::class
+					);
+
+					foreach ($channelProperties as $propertyItem) {
+						$this->propertyStateHelper->setValue(
+							$propertyItem,
+							Nette\Utils\ArrayHash::from([
+								'valid' => false,
+							])
+						);
+					}
+				}
+			}
 		}
 
 		$this->logger->debug(

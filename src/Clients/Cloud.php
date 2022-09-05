@@ -36,6 +36,7 @@ use Nette\Utils;
 use Psr\Log;
 use Ratchet;
 use Ratchet\RFC6455;
+use React\Async;
 use React\EventLoop;
 use React\Http as ReactHttp;
 use React\Socket;
@@ -59,12 +60,20 @@ final class Cloud implements Client
 	private const HANDLER_START_DELAY = 2;
 	private const HANDLER_PROCESSING_INTERVAL = 0.01;
 
+	private const SENDING_READ_STATUS_DELAY = 120;
+
 	public const WS_MESSAGE_SCHEMA_FILENAME = 'openpulsar_message.json';
 	public const WS_MESSAGE_PAYLOAD_SCHEMA_FILENAME = 'openpulsar_payload.json';
 	public const WS_MESSAGE_PAYLOAD_DATA_SCHEMA_FILENAME = 'openpulsar_data.json';
 
+	private const CMD_INFO = 'info';
+	private const CMD_STATUS = 'status';
+
 	/** @var string[] */
 	private array $processedDevices = [];
+
+	/** @var Array<string, Array<string, DateTimeInterface|bool>> */
+	private array $processedDevicesCommands = [];
 
 	/** @var Array<string, DateTimeInterface> */
 	private array $processedProperties = [];
@@ -176,16 +185,21 @@ final class Cloud implements Client
 	 */
 	public function connect(): void
 	{
-		$secureContext = [
-			'verify_peer'      => false,
-			'verify_peer_name' => false,
-			'check_hostname'   => false,
-		];
+		$this->processedDevices = [];
+		$this->processedDevicesCommands = [];
+		$this->processedProperties = [];
+
+		$this->pingTimer = null;
+		$this->handlerTimer = null;
 
 		$reactConnector = new Socket\Connector([
 			'dns'     => '8.8.8.8',
 			'timeout' => 10,
-			'tls'     => $secureContext,
+			'tls'     => [
+				'verify_peer'      => false,
+				'verify_peer_name' => false,
+				'check_hostname'   => false,
+			],
 		]);
 
 		$connector = new Ratchet\Client\Connector($this->eventLoop, $reactConnector);
@@ -206,7 +220,7 @@ final class Cloud implements Client
 					'Connected to Tuya sockets server',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'openapi-client',
+						'type'   => 'cloud-client',
 					]
 				);
 
@@ -221,7 +235,7 @@ final class Cloud implements Client
 						'Connection to Tuya WS server was closed',
 						[
 							'source'     => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'       => 'openapi-client',
+							'type'       => 'cloud-client',
 							'connection' => [
 								'code'   => $code,
 								'reason' => $reason,
@@ -257,7 +271,7 @@ final class Cloud implements Client
 					'Connection to Tuya WS server failed',
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'openapi-client',
+						'type'      => 'cloud-client',
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
@@ -332,6 +346,10 @@ final class Cloud implements Client
 	 */
 	private function handleCommunication(): void
 	{
+		if (!$this->openApiApi->isConnected()) {
+			Async\await($this->openApiApi->connect());
+		}
+
 		foreach ($this->processedProperties as $index => $processedProperty) {
 			if (((float) $this->dateTimeFactory->getNow()->format('Uv') - (float) $processedProperty->format('Uv')) >= 500) {
 				unset($this->processedProperties[$index]);
@@ -368,10 +386,137 @@ final class Cloud implements Client
 	 */
 	private function processDevice(MetadataEntities\Modules\DevicesModule\IDeviceEntity $device): bool
 	{
+		if ($this->readDeviceData(self::CMD_INFO, $device)) {
+			return true;
+		}
+
+		if ($this->readDeviceData(self::CMD_STATUS, $device)) {
+			return true;
+		}
+
 		if (
 			$this->deviceConnectionStateManager->getState($device)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
 		) {
 			return $this->writeChannelsProperty($device);
+		}
+
+		return true;
+	}
+
+	/**
+	 * @param string $cmd
+	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $device
+	 *
+	 * @return bool
+	 *
+	 * @throws Throwable
+	 */
+	private function readDeviceData(string $cmd, MetadataEntities\Modules\DevicesModule\IDeviceEntity $device): bool
+	{
+		$httpCmdResult = null;
+
+		if (!array_key_exists($device->getId()->toString(), $this->processedDevicesCommands)) {
+			$this->processedDevicesCommands[$device->getId()->toString()] = [];
+		}
+
+		if (array_key_exists($cmd, $this->processedDevicesCommands[$device->getId()->toString()])) {
+			$httpCmdResult = $this->processedDevicesCommands[$device->getId()->toString()][$cmd];
+		}
+
+		if ($httpCmdResult === true) {
+			return false;
+		}
+
+		if (
+			$httpCmdResult instanceof DateTimeInterface
+			&& ($this->dateTimeFactory->getNow()->getTimestamp() - $httpCmdResult->getTimestamp()) < self::SENDING_READ_STATUS_DELAY
+		) {
+			return true;
+		}
+
+		$this->processedDevicesCommands[$device->getId()->toString()][$cmd] = $this->dateTimeFactory->getNow();
+
+		if ($cmd === self::CMD_INFO) {
+			if ($this->deviceConnectionStateManager->getState($device)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)) {
+				$this->processedDevicesCommands[$device->getId()->toString()][$cmd] = true;
+
+				return false;
+			}
+
+			$this->openApiApi->getDeviceInformation($device->getIdentifier())
+				->then(function (Entities\API\DeviceInformation $deviceInformation) use ($cmd, $device): void {
+					if ($deviceInformation->isOnline()) {
+						$this->processedDevicesCommands[$device->getId()->toString()][$cmd] = true;
+					}
+
+					$this->consumer->append(new Entities\Messages\DeviceState(
+						Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
+						$this->connector->getId(),
+						$device->getIdentifier(),
+						$deviceInformation->isOnline()
+					));
+				})
+				->otherwise(function (Throwable $ex): void {
+					$this->logger->error(
+						'Could not call cloud openapi',
+						[
+							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'      => 'cloud-client',
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
+						]
+					);
+
+					throw new DevicesModuleExceptions\TerminateException(
+						'Could not call cloud openapi',
+						$ex->getCode(),
+						$ex
+					);
+				});
+
+		} elseif ($cmd === self::CMD_STATUS) {
+			$this->openApiApi->getDeviceStatus($device->getIdentifier())
+				->then(function (array $statuses) use ($cmd, $device): void {
+					$this->processedDevicesCommands[$device->getId()->toString()][$cmd] = true;
+
+					$dataPointsStatuses = [];
+
+					foreach ($statuses as $status) {
+						$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
+							Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
+							$status->getCode(),
+							$status->getValue()
+						);
+					}
+
+					$this->consumer->append(new Entities\Messages\DeviceStatus(
+						Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
+						$this->connector->getId(),
+						$device->getIdentifier(),
+						$dataPointsStatuses
+					));
+				})
+				->otherwise(function (Throwable $ex): void {
+					$this->logger->error(
+						'Could not call cloud openapi',
+						[
+							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'      => 'cloud-client',
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
+						]
+					);
+
+					throw new DevicesModuleExceptions\TerminateException(
+						'Could not call cloud openapi',
+						$ex->getCode(),
+						$ex
+					);
+				});
 		}
 
 		return true;
@@ -445,7 +590,7 @@ final class Cloud implements Client
 											'Expected value could not be set',
 											[
 												'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-												'type'      => 'openapi-client',
+												'type'      => 'cloud-client',
 												'exception' => [
 													'message' => $ex->getMessage(),
 													'code'    => $ex->getCode(),
@@ -500,7 +645,7 @@ final class Cloud implements Client
 				'Could not decode received WS message',
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'openapi-client',
+					'type'      => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
@@ -525,7 +670,7 @@ final class Cloud implements Client
 					'Could not confirm received WS message',
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'openapi-client',
+						'type'      => 'cloud-client',
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
@@ -543,7 +688,7 @@ final class Cloud implements Client
 				'Received WS message is invalid',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'openapi-client',
+					'type'   => 'cloud-client',
 				]
 			);
 
@@ -557,7 +702,7 @@ final class Cloud implements Client
 				'Received WS message payload could not be decoded',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'openapi-client',
+					'type'   => 'cloud-client',
 				]
 			);
 
@@ -568,7 +713,7 @@ final class Cloud implements Client
 			'Received message origin payload',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'openapi-client',
+				'type'   => 'cloud-client',
 				'data'   => [
 					'payload' => $payload,
 				],
@@ -586,7 +731,7 @@ final class Cloud implements Client
 				'Could not decode received WS message payload',
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'openapi-client',
+					'type'      => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
@@ -605,7 +750,7 @@ final class Cloud implements Client
 				'Received WS message payload is invalid',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'openapi-client',
+					'type'   => 'cloud-client',
 				]
 			);
 
@@ -619,7 +764,7 @@ final class Cloud implements Client
 				'Received WS message payload data could not be decoded',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'openapi-client',
+					'type'   => 'cloud-client',
 				]
 			);
 
@@ -645,7 +790,7 @@ final class Cloud implements Client
 				'Received WS message payload data could not be decrypted',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'openapi-client',
+					'type'   => 'cloud-client',
 				]
 			);
 
@@ -656,7 +801,7 @@ final class Cloud implements Client
 			'Received message decrypted',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'openapi-client',
+				'type'   => 'cloud-client',
 				'data'   => $decryptedData,
 			]
 		);
@@ -672,7 +817,7 @@ final class Cloud implements Client
 				'Could not decode received WS message payload data decrypted',
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'openapi-client',
+					'type'      => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
@@ -782,9 +927,9 @@ final class Cloud implements Client
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
-			function (): void {
+			Async\async(function (): void {
 				$this->handleCommunication();
-			}
+			})
 		);
 	}
 
