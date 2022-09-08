@@ -105,6 +105,9 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		$builder->addDefinition($this->prefix('consumer.discovery.cloudDevice'), new DI\Definitions\ServiceDefinition())
 			->setType(Consumers\Messages\CloudDiscovery::class);
 
+		$builder->addDefinition($this->prefix('consumer.discovery.localDevice'), new DI\Definitions\ServiceDefinition())
+			->setType(Consumers\Messages\LocalDiscovery::class);
+
 		$builder->addDefinition($this->prefix('consumer.discovery.status'), new DI\Definitions\ServiceDefinition())
 			->setType(Consumers\Messages\Status::class);
 
@@ -117,6 +120,9 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 
 		$builder->addDefinition($this->prefix('api.openApi.entityFactory'))
 			->setType(API\OpenApiEntityFactory::class);
+
+		$builder->addDefinition($this->prefix('api.localApi.api'))
+			->setType(API\LocalApiFactory::class);
 
 		// Clients
 		$builder->addFactoryDefinition($this->prefix('client.local'))

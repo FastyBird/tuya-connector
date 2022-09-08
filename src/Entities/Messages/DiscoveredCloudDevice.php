@@ -42,7 +42,7 @@ final class DiscoveredCloudDevice implements Entity
 	private string $localKey;
 
 	/** @var string|null */
-	private ?string $ip;
+	private ?string $ipAddress;
 
 	/** @var string|null */
 	private ?string $name;
@@ -66,7 +66,7 @@ final class DiscoveredCloudDevice implements Entity
 	 * @param Uuid\UuidInterface $connector
 	 * @param string $id
 	 * @param string $localKey
-	 * @param string|null $ip
+	 * @param string|null $ipAddress
 	 * @param string|null $name
 	 * @param string|null $model
 	 * @param string|null $sn
@@ -78,7 +78,7 @@ final class DiscoveredCloudDevice implements Entity
 		Uuid\UuidInterface $connector,
 		string $id,
 		string $localKey,
-		?string $ip,
+		?string $ipAddress,
 		?string $name,
 		?string $model,
 		?string $sn,
@@ -89,7 +89,7 @@ final class DiscoveredCloudDevice implements Entity
 		$this->connector = $connector;
 		$this->id = $id;
 		$this->localKey = $localKey;
-		$this->ip = $ip;
+		$this->ipAddress = $ipAddress;
 		$this->name = $name;
 		$this->model = $model;
 		$this->sn = $sn;
@@ -125,9 +125,9 @@ final class DiscoveredCloudDevice implements Entity
 	/**
 	 * @return string|null
 	 */
-	public function getIp(): ?string
+	public function getIpAddress(): ?string
 	{
-		return $this->ip;
+		return $this->ipAddress;
 	}
 
 	/**
@@ -187,7 +187,7 @@ final class DiscoveredCloudDevice implements Entity
 			'connector'   => $this->getConnector()->toString(),
 			'id'          => $this->getId(),
 			'local_key'   => $this->getLocalKey(),
-			'ip'          => $this->getIp(),
+			'ip_address'  => $this->getIpAddress(),
 			'name'        => $this->getName(),
 			'model'       => $this->getModel(),
 			'sn'          => $this->getSn(),

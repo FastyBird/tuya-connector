@@ -48,7 +48,7 @@ trait TConsumeDeviceProperty
 
 	/**
 	 * @param Uuid\UuidInterface $deviceId
-	 * @param string|null $value
+	 * @param string|bool|null $value
 	 * @param string $identifier
 	 *
 	 * @return void
@@ -57,7 +57,7 @@ trait TConsumeDeviceProperty
 	 */
 	private function setDeviceProperty(
 		Uuid\UuidInterface $deviceId,
-		?string $value,
+		string|bool|null $value,
 		string $identifier
 	): void {
 		$propertyItem = $this->propertiesDataStorageRepository->findByIdentifier(

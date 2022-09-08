@@ -72,8 +72,14 @@ final class Discovery
 	/** @var Helpers\Connector */
 	private Helpers\Connector $connectorHelper;
 
-	/** @var API\OpenApi */
-	private API\OpenApi $openApiApi;
+	/** @var API\OpenApi|null */
+	private ?API\OpenApi $openApiApi = null;
+
+	/** @var API\OpenApiFactory */
+	private API\OpenApiFactory $openApiApiFactory;
+
+	/** @var API\LocalApiFactory */
+	private API\LocalApiFactory $localApiFactory;
 
 	/** @var Consumers\Messages */
 	private Consumers\Messages $consumer;
@@ -93,6 +99,7 @@ final class Discovery
 	/**
 	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
 	 * @param API\OpenApiFactory $openApiApiFactory
+	 * @param API\LocalApiFactory $localApiFactory
 	 * @param Helpers\Connector $connectorHelper
 	 * @param Consumers\Messages $consumer
 	 * @param EventLoop\LoopInterface $eventLoop
@@ -102,6 +109,7 @@ final class Discovery
 	public function __construct(
 		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
 		API\OpenApiFactory $openApiApiFactory,
+		API\LocalApiFactory $localApiFactory,
 		Helpers\Connector $connectorHelper,
 		Consumers\Messages $consumer,
 		EventLoop\LoopInterface $eventLoop,
@@ -115,10 +123,12 @@ final class Discovery
 		$this->eventLoop = $eventLoop;
 		$this->dispatcher = $dispatcher;
 
+		$this->openApiApiFactory = $openApiApiFactory;
+		$this->localApiFactory = $localApiFactory;
+
 		$this->logger = $logger ?? new Log\NullLogger();
 
 		$this->serverFactory = new Datagram\Factory($this->eventLoop);
-		$this->openApiApi = $openApiApiFactory->create($this->connector);
 	}
 
 	/**
@@ -245,6 +255,8 @@ final class Discovery
 	 */
 	private function discoverCloudDevices(): void
 	{
+		$this->openApiApi = $this->openApiApiFactory->create($this->connector);
+
 		$this->logger->debug(
 			'Starting cloud devices discovery',
 			[
@@ -367,6 +379,7 @@ final class Discovery
 			}
 
 			$this->discoveredLocalDevices->attach(new Entities\Messages\DiscoveredLocalDevice(
+				$this->connector->getId(),
 				strval($deviceInfo->offsetGet('gwId')),
 				strval($deviceInfo->offsetGet('ip')),
 				strval($deviceInfo->offsetGet('productKey')),
@@ -401,6 +414,21 @@ final class Discovery
 		array $devices,
 	): void {
 		foreach ($devices as $device) {
+			/*
+			$localApi = $this->localApiFactory->create(
+				$device->getId(),
+				'46664614c91aefae',
+				$device->getIpAddress(),
+				$device->getVersion()
+			);
+
+			$localApi->connect();
+
+			if ($localApi->isConnected()) {
+				$deviceStates = $localApi->readStates();
+			}
+			*/
+
 			$this->consumer->append($device);
 		}
 	}
@@ -417,6 +445,10 @@ final class Discovery
 		array $devices,
 		array $devicesFactoryInfos
 	): void {
+		if ($this->openApiApi === null) {
+			return;
+		}
+
 		foreach ($devices as $device) {
 			/** @var Entities\API\DeviceFactoryInfos[] $deviceFactoryInfosFiltered */
 			$deviceFactoryInfosFiltered = array_values(array_filter(
@@ -500,7 +532,7 @@ final class Discovery
 						$dataPointSpecification = Utils\Json::decode($dataPointSpecification, Utils\Json::FORCE_ARRAY);
 						$dataPointSpecification = Utils\ArrayHash::from(is_array($dataPointSpecification) ? $dataPointSpecification : []);
 
-					} catch (Utils\JsonException $ex) {
+					} catch (Utils\JsonException) {
 						$dataPointSpecification = Utils\ArrayHash::from([]);
 					}
 

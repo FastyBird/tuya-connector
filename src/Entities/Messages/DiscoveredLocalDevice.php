@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 
 use FastyBird\TuyaConnector\Types;
 use Nette;
+use Ramsey\Uuid;
 
 /**
  * Discovered local device entity
@@ -30,6 +31,9 @@ final class DiscoveredLocalDevice implements Entity
 {
 
 	use Nette\SmartObject;
+
+	/** @var Uuid\UuidInterface */
+	private Uuid\UuidInterface $connector;
 
 	/** @var string */
 	private string $id;
@@ -53,6 +57,7 @@ final class DiscoveredLocalDevice implements Entity
 	private Types\MessageSource $source;
 
 	/**
+	 * @param Uuid\UuidInterface $connector
 	 * @param string $id
 	 * @param string $ipAddress
 	 * @param string $productKey
@@ -61,6 +66,7 @@ final class DiscoveredLocalDevice implements Entity
 	 * @param Types\MessageSource $source
 	 */
 	public function __construct(
+		Uuid\UuidInterface $connector,
 		string $id,
 		string $ipAddress,
 		string $productKey,
@@ -68,6 +74,7 @@ final class DiscoveredLocalDevice implements Entity
 		string $version,
 		Types\MessageSource $source
 	) {
+		$this->connector = $connector;
 		$this->id = $id;
 		$this->ipAddress = $ipAddress;
 		$this->productKey = $productKey;
@@ -75,6 +82,14 @@ final class DiscoveredLocalDevice implements Entity
 		$this->version = $version;
 
 		$this->source = $source;
+	}
+
+	/**
+	 * @return Uuid\UuidInterface
+	 */
+	public function getConnector(): Uuid\UuidInterface
+	{
+		return $this->connector;
 	}
 
 	/**
@@ -149,6 +164,7 @@ final class DiscoveredLocalDevice implements Entity
 	public function toArray(): array
 	{
 		return [
+			'connector'   => $this->getConnector()->toString(),
 			'id'          => $this->id,
 			'ip_address'  => $this->ipAddress,
 			'product_key' => $this->productKey,
