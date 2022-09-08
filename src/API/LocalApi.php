@@ -15,16 +15,19 @@
 
 namespace FastyBird\TuyaConnector\API;
 
+use DateTimeInterface;
+use Evenement;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
+use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Types;
 use Nette;
 use Psr\Log;
 use React\EventLoop;
+use React\Promise;
 use React\Socket;
 use Throwable;
-use function React\Async\await;
 
 /**
  * Local UDP device interface
@@ -34,12 +37,19 @@ use function React\Async\await;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class LocalApi
+final class LocalApi implements Evenement\EventEmitterInterface
 {
 
 	use Nette\SmartObject;
+	use Evenement\EventEmitterTrait;
 
 	private const SOCKET_PORT = 6668;
+
+	private const HEARTBEAT_INTERVAL = 7.0;
+	private const HEARTBEAT_SEQ_NO = -100;
+	private const HEARTBEAT_TIMEOUT = 10.0;
+
+	private const WAIT_FOR_REPLY_TIMEOUT = 5.0;
 
 	/** @var string */
 	private string $identifier;
@@ -52,6 +62,21 @@ final class LocalApi
 
 	/** @var string */
 	private string $ipAddress;
+
+	/** @var int */
+	private int $sequenceNr = 0;
+
+	/** @var DateTimeInterface|null */
+	private ?DateTimeInterface $lastHeartbeat = null;
+
+	/** @var Array<int, Promise\Deferred> */
+	private array $messagesListeners = [];
+
+	/** @var Array<int, EventLoop\TimerInterface> */
+	private array $messagesListenersTimers = [];
+
+	/** @var EventLoop\TimerInterface|null */
+	private EventLoop\TimerInterface|null $heartBeatTimer = null;
 
 	/** @var Types\DeviceProtocolVersion */
 	private Types\DeviceProtocolVersion $protocolVersion;
@@ -101,56 +126,105 @@ final class LocalApi
 	}
 
 	/**
-	 * @return void
+	 * @return Promise\PromiseInterface
 	 */
-	public function connect(): void
+	public function connect(): Promise\PromiseInterface
 	{
+		$this->messagesListeners = [];
+		$this->messagesListenersTimers = [];
+
+		$this->heartBeatTimer = null;
+		$this->lastHeartbeat = null;
+
+		$deferred = new Promise\Deferred();
+
 		try {
 			$connector = new Socket\Connector($this->eventLoop);
 
-			/** @var Socket\ConnectionInterface $connection */
-			$connection = await($connector->connect($this->ipAddress . ':' . self::SOCKET_PORT));
+			$connector->connect($this->ipAddress . ':' . self::SOCKET_PORT)
+				->then(function (Socket\ConnectionInterface $connection) use ($deferred): void {
+					$this->connection = $connection;
 
-			$this->connection = $connection;
+					$this->connection->on('data', function ($chunk) {
+						$message = $this->decodePayload($chunk);
 
-			$this->connection->on('data', function ($chunk) {
-				var_dump('RECEIVED DATA');
-				var_dump($chunk);
-				$buffer = unpack('C*', $chunk);
+						if ($message !== null) {
+							var_dump($message->toArray());
 
-				if ($buffer !== false) {
-					$bufferSize = count($buffer);
+							if (array_key_exists($message->getSequence(), $this->messagesListeners)) {
+								$this->messagesListeners[$message->getSequence()]->resolve($message);
+							}
 
-					$seq = ($buffer[5] << 24) + ($buffer[6] << 16) + ($buffer[7] << 8) + $buffer[8];
-					$cmd = ($buffer[9] << 24) + ($buffer[10] << 16) + ($buffer[11] << 8) + $buffer[12];
-					$size = ($buffer[13] << 24) + ($buffer[14] << 16) + ($buffer[15] << 8) + $buffer[16];
-					$returnCode = ($buffer[17] << 24) + ($buffer[18] << 16) + ($buffer[19] << 8) + $buffer[20];
-					$crc = ($buffer[$bufferSize - 7] << 24) + ($buffer[$bufferSize - 6] << 16) + ($buffer[$bufferSize - 5] << 8) + $buffer[$bufferSize - 4];
+							if ($message->getCommand()->equalsValue(Types\LocalDeviceCommand::CMD_HEART_BEAT)) {
+								$this->lastHeartbeat = $this->dateTimeFactory->getNow();
 
-					$hasReturnCode = ($returnCode & 0xFFFFFF00) === 0;
+								$this->logger->debug(
+									'Device has replied to heartbeat',
+									[
+										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+										'type'   => 'localapi-api',
+										'device' => [
+											'identifier' => $this->identifier,
+										],
+									]
+								);
+							}
 
-					$bodyPart = array_slice($buffer, 0, $bufferSize - 8);
+							if ($message->getCommand()->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
+								$this->logger->debug(
+									'Device has reported its status',
+									[
+										'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+										'type'    => 'localapi-api',
+										'device'  => [
+											'identifier' => $this->identifier,
+										],
+										'message' => [
+											'data' => $message->getData(),
+										],
+									]
+								);
+							}
+						}
+					});
 
-					$bodyPartPacked = pack('C*', ...$bodyPart);
+					$this->connection->on('error', function (Throwable $ex) {
+						$this->logger->error(
+							'An error occurred on device connection',
+							[
+								'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'      => 'localapi-api',
+								'device'    => [
+									'identifier' => $this->identifier,
+								],
+								'exception' => [
+									'message' => $ex->getMessage(),
+									'code'    => $ex->getCode(),
+								],
+							]
+						);
 
-					if (crc32($bodyPartPacked) !== $crc) {
-						return;
-					}
+						$this->disconnect();
+					});
 
-					$payload = '';
+					$this->connection->on('close', function () {
+						$this->logger->debug(
+							'Connection with device was closed',
+							[
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'   => 'localapi-api',
+								'device' => [
+									'identifier' => $this->identifier,
+								],
+							]
+						);
+					});
 
-					if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
-						$data = array_slice($buffer, 20, $bufferSize - 8);
-
-						if ((($buffer[21] << 8) + $buffer[22]) === ord('{')) {
-							$payload = pack('C*', ...$data);
-						} elseif (
-							$buffer[21] === ord('3')
-							&& $buffer[22] === ord('.')
-							&& $buffer[23] === ord('1')
-						) {
-							$this->logger->info(
-								'Received message from device in version 3.1. This code is untested',
+					$this->heartBeatTimer = $this->eventLoop->addPeriodicTimer(
+						self::HEARTBEAT_INTERVAL,
+						function (): void {
+							$this->logger->debug(
+								'Sending ping to device',
 								[
 									'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 									'type'   => 'localapi-api',
@@ -160,85 +234,19 @@ final class LocalApi
 								]
 							);
 
-							$data = array_slice($data, 3); // Remove version header
-
-							// Remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hex digest of payload
-							$data = array_slice($data, 16);
-
-							$payload = openssl_decrypt(
-								base64_decode(pack('C*', ...$data)),
-								'AES-128-ECB',
-								mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-								OPENSSL_RAW_DATA
+							$this->sendRequest(
+								Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_HEART_BEAT),
+								null,
+								self::HEARTBEAT_SEQ_NO
 							);
 						}
-					} elseif ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V33)) {
-						if ($size > 12) {
-							$data = array_slice($buffer, 20, ($size + 8) - 20);
-
-							if ($cmd === Types\LocalDeviceCommand::CMD_STATUS) {
-								$data = array_slice($data, 15);
-							}
-
-							$payload = openssl_decrypt(
-								pack('C*', ...$data),
-								'AES-128-ECB',
-								mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-								OPENSSL_RAW_DATA
-							);
-						}
-					}
-
-					$this->logger->debug(
-						'Received message from device',
-						[
-							'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'    => 'localapi-api',
-							'device'  => [
-								'identifier' => $this->identifier,
-							],
-							'message' => [
-								'seq'     => $seq,
-								'cmd'     => $cmd,
-								'rc'      => $returnCode,
-								'payload' => $payload,
-							],
-						]
 					);
 
-					var_dump($payload);
-				}
-			});
-
-			$this->connection->on('error', function (Throwable $ex) {
-				$this->logger->error(
-					'An error occurred on device connection',
-					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'localapi-api',
-						'device'    => [
-							'identifier' => $this->identifier,
-						],
-						'exception' => [
-							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
-						],
-					]
-				);
-			});
-
-			$this->connection->on('close', function () {
-				$this->logger->debug(
-					'Connection with device was closed',
-					[
-						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'localapi-api',
-						'device' => [
-							'identifier' => $this->identifier,
-						],
-					]
-				);
-			});
+					$deferred->resolve();
+				})
+				->otherwise(function (Throwable $ex) use ($deferred): void {
+					$deferred->reject($ex);
+				});
 		} catch (Throwable $ex) {
 			$this->logger->error(
 				'Could not create connector',
@@ -254,7 +262,11 @@ final class LocalApi
 					],
 				]
 			);
+
+			$deferred->reject();
 		}
+
+		return $deferred->promise();
 	}
 
 	/**
@@ -263,6 +275,18 @@ final class LocalApi
 	public function disconnect(): void
 	{
 		$this->connection?->close();
+
+		if ($this->heartBeatTimer !== null) {
+			$this->eventLoop->cancelTimer($this->heartBeatTimer);
+		}
+
+		foreach ($this->messagesListenersTimers as $timer) {
+			$this->eventLoop->cancelTimer($timer);
+		}
+
+		foreach ($this->messagesListeners as $listener) {
+			$listener->reject(new Exceptions\LocalApiCall('Closing connection to device'));
+		}
 	}
 
 	/**
@@ -270,21 +294,119 @@ final class LocalApi
 	 */
 	public function isConnected(): bool
 	{
-		return $this->connection !== null;
+		return $this->connection !== null
+			&& (
+				$this->lastHeartbeat === null
+				|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) < self::HEARTBEAT_TIMEOUT
+			);
 	}
 
-	public function readStates()
+	/**
+	 * @return Promise\PromiseInterface
+	 */
+	public function readStates(): Promise\PromiseInterface
 	{
+		$deferred = new Promise\Deferred();
+
+		$sequenceNr = $this->sendRequest(Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_DP_QUERY));
+
+		$this->messagesListeners[$sequenceNr] = $deferred;
+
+		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
+			self::WAIT_FOR_REPLY_TIMEOUT,
+			function () use ($deferred, $sequenceNr): void {
+				$deferred->reject(new Exceptions\LocalApiCall('Sending command to device failed'));
+
+				unset($this->messagesListeners[$sequenceNr]);
+				unset($this->messagesListenersTimers[$sequenceNr]);
+			}
+		);
+
+		return $deferred->promise();
 	}
 
-	public function writeStates(): bool
+	/**
+	 * @param Array<string, int|float|string|bool> $states
+	 *
+	 * @return Promise\PromiseInterface
+	 */
+	public function writeStates(array $states): Promise\PromiseInterface
 	{
-		return false;
+		$deferred = new Promise\Deferred();
+
+		$sequenceNr = $this->sendRequest(
+			Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_CONTROL),
+			$states
+		);
+
+		$this->messagesListeners[$sequenceNr] = $deferred;
+
+		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
+			self::WAIT_FOR_REPLY_TIMEOUT,
+			function () use ($deferred, $sequenceNr): void {
+				$deferred->reject(new Exceptions\LocalApiCall('Sending command to device failed'));
+
+				unset($this->messagesListeners[$sequenceNr]);
+				unset($this->messagesListenersTimers[$sequenceNr]);
+			}
+		);
+
+		return $deferred->promise();
 	}
 
-	public function writeState(): bool
+	/**
+	 * @param string $idx
+	 * @param int|float|string|bool $value
+	 *
+	 * @return Promise\PromiseInterface
+	 */
+	public function writeState(string $idx, int|float|string|bool $value): Promise\PromiseInterface
 	{
-		return false;
+		return $this->writeStates([$idx => $value]);
+	}
+
+	/**
+	 * @param Types\LocalDeviceCommand $command
+	 * @param Array<string, int|float|string|bool>|null $data
+	 * @param int|null $sequenceNr
+	 *
+	 * @return int
+	 */
+	private function sendRequest(
+		Types\LocalDeviceCommand $command,
+		?array $data = null,
+		?int $sequenceNr = null
+	): int {
+		if ($sequenceNr === null) {
+			$this->sequenceNr++;
+
+			$payloadSequenceNr = $this->sequenceNr;
+
+		} else {
+			$payloadSequenceNr = $sequenceNr;
+		}
+
+		$payload = $this->buildPayload($payloadSequenceNr, $command, $data);
+
+		$this->logger->debug(
+			'Sending message to device',
+			[
+				'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type'    => 'localapi-api',
+				'device'  => [
+					'identifier' => $this->identifier,
+				],
+				'message' => [
+					'command'  => $command->getValue(),
+					'data'     => $data,
+					'sequence' => $sequenceNr,
+				],
+			]
+		);
+
+		$this->connection?->write((string) pack('C*', ...$payload));
+
+		return $this->sequenceNr;
 	}
 
 	/**
@@ -293,8 +415,6 @@ final class LocalApi
 	 * @param Array<string, string|int|float|bool>|null $data
 	 *
 	 * @return int[]
-	 *
-	 * @throws Nette\Utils\JsonException
 	 */
 	private function buildPayload(
 		int $sequenceNr,
@@ -305,6 +425,10 @@ final class LocalApi
 
 		if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
 			$payload = $this->generateData($command, $data);
+
+			if ($payload === null) {
+				throw new Exceptions\InvalidState('Payload could not be prepared');
+			}
 
 			if ($command->equalsValue(Types\LocalDeviceCommand::CMD_CONTROL)) {
 				$payload = openssl_encrypt(
@@ -358,8 +482,14 @@ final class LocalApi
 				$header = array_merge((array) unpack('C*', '3.3'), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 			}
 
+			$payload = $this->generateData($command, $data);
+
+			if ($payload === null) {
+				throw new Exceptions\InvalidState('Payload could not be prepared');
+			}
+
 			$payload = openssl_encrypt(
-				$this->generateData($command, $data),
+				$payload,
 				'AES-128-ECB',
 				mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
 				OPENSSL_RAW_DATA
@@ -382,18 +512,156 @@ final class LocalApi
 	}
 
 	/**
+	 * @param string $data
+	 *
+	 * @return Entities\API\DeviceRawMessage|null
+	 */
+	private function decodePayload(string $data): ?Entities\API\DeviceRawMessage
+	{
+		$buffer = unpack('C*', $data);
+
+		if ($buffer !== false) {
+			$bufferSize = count($buffer);
+
+			$sequenceNr = (int) (($buffer[5] << 24) + ($buffer[6] << 16) + ($buffer[7] << 8) + $buffer[8]);
+			$command = (int) (($buffer[9] << 24) + ($buffer[10] << 16) + ($buffer[11] << 8) + $buffer[12]);
+			$size = (int) (($buffer[13] << 24) + ($buffer[14] << 16) + ($buffer[15] << 8) + $buffer[16]);
+			$returnCode = (int) (($buffer[17] << 24) + ($buffer[18] << 16) + ($buffer[19] << 8) + $buffer[20]);
+			$crc = (int) (($buffer[$bufferSize - 7] << 24) + ($buffer[$bufferSize - 6] << 16) + ($buffer[$bufferSize - 5] << 8) + $buffer[$bufferSize - 4]);
+
+			$hasReturnCode = ($returnCode & 0xFFFFFF00) === 0;
+
+			$bodyPart = array_slice($buffer, 0, $bufferSize - 8);
+
+			$bodyPartPacked = pack('C*', ...$bodyPart);
+
+			if (crc32($bodyPartPacked) !== $crc) {
+				return null;
+			}
+
+			$payload = null;
+
+			if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
+				$data = array_slice($buffer, 20, $bufferSize - 8);
+
+				if ((($buffer[21] << 8) + $buffer[22]) === ord('{')) {
+					$payload = pack('C*', ...$data);
+				} elseif (
+					$buffer[21] === ord('3')
+					&& $buffer[22] === ord('.')
+					&& $buffer[23] === ord('1')
+				) {
+					$this->logger->info(
+						'Received message from device in version 3.1. This code is untested',
+						[
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'   => 'localapi-api',
+							'device' => [
+								'identifier' => $this->identifier,
+							],
+						]
+					);
+
+					$data = array_slice($data, 3); // Remove version header
+
+					// Remove (what I'm guessing, but not confirmed is) 16-bytes of MD5 hex digest of payload
+					$data = array_slice($data, 16);
+
+					$payload = openssl_decrypt(
+						base64_decode(pack('C*', ...$data)),
+						'AES-128-ECB',
+						mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
+						OPENSSL_RAW_DATA
+					);
+
+					if ($payload === false) {
+						$this->logger->error(
+							'Received message payload could not be decoded',
+							[
+								'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'    => 'localapi-api',
+								'device'  => [
+									'identifier' => $this->identifier,
+								],
+							]
+						);
+
+						return null;
+					}
+				}
+			} elseif ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V33)) {
+				if ($size > 12) {
+					$data = array_slice($buffer, 20, ($size + 8) - 20);
+
+					if ($command === Types\LocalDeviceCommand::CMD_STATUS) {
+						$data = array_slice($data, 15);
+					}
+
+					$payload = openssl_decrypt(
+						pack('C*', ...$data),
+						'AES-128-ECB',
+						mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
+						OPENSSL_RAW_DATA
+					);
+
+					if ($payload === false) {
+						$this->logger->error(
+							'Received message payload could not be decoded',
+							[
+								'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'    => 'localapi-api',
+								'device'  => [
+									'identifier' => $this->identifier,
+								],
+							]
+						);
+
+						return null;
+					}
+				}
+			}
+
+			$this->logger->debug(
+				'Received message from device',
+				[
+					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'    => 'localapi-api',
+					'device'  => [
+						'identifier' => $this->identifier,
+					],
+					'message' => [
+						'command'    => $command,
+						'data'       => $payload,
+						'sequence'   => $sequenceNr,
+						'returnCode' => $returnCode,
+					],
+				]
+			);
+
+			return new Entities\API\DeviceRawMessage(
+				$this->identifier,
+				Types\LocalDeviceCommand::get($command),
+				$sequenceNr,
+				$hasReturnCode ? $returnCode : null,
+				$payload
+			);
+		}
+
+		return null;
+	}
+
+	/**
 	 * Fill the data structure for the command with the given values
 	 *
 	 * @param Types\LocalDeviceCommand $command
 	 * @param Array<string, string|int|float|bool>|null $data
 	 *
-	 * @return string
-	 * @throws Nette\Utils\JsonException
+	 * @return string|null
 	 */
 	private function generateData(
 		Types\LocalDeviceCommand $command,
 		?array $data = null
-	): string {
+	): ?string {
 		$templates = [
 			Types\LocalDeviceCommand::CMD_CONTROL      => [
 				'devId' => '',
@@ -453,7 +721,27 @@ final class LocalApi
 			$result['dps'] = $data;
 		}
 
-		return $result === [] ? '{}' : Nette\Utils\Json::encode($result);
+		try {
+			return $result === [] ? '{}' : Nette\Utils\Json::encode($result);
+
+		} catch (Nette\Utils\JsonException $ex) {
+			$this->logger->error(
+				'Message payload could not be build',
+				[
+					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'      => 'localapi-api',
+					'device'    => [
+						'identifier' => $this->identifier,
+					],
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
+				]
+			);
+
+			return null;
+		}
 	}
 
 	/**

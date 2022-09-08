@@ -17,7 +17,6 @@ namespace FastyBird\TuyaConnector\API;
 
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
-use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use React\EventLoop;
@@ -36,9 +35,6 @@ final class LocalApiFactory
 	/** @var OpenApiEntityFactory */
 	private OpenApiEntityFactory $entityFactory;
 
-	/** @var Helpers\Connector */
-	private Helpers\Connector $connectorHelper;
-
 	/** @var MetadataSchemas\IValidator */
 	private MetadataSchemas\IValidator $schemaValidator;
 
@@ -53,7 +49,6 @@ final class LocalApiFactory
 
 	/**
 	 * @param OpenApiEntityFactory $entityFactory
-	 * @param Helpers\Connector $connectorHelper
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
 	 * @param EventLoop\LoopInterface $eventLoop
@@ -61,14 +56,12 @@ final class LocalApiFactory
 	 */
 	public function __construct(
 		OpenApiEntityFactory $entityFactory,
-		Helpers\Connector $connectorHelper,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
 		EventLoop\LoopInterface $eventLoop,
 		?Log\LoggerInterface $logger = null
 	) {
 		$this->entityFactory = $entityFactory;
-		$this->connectorHelper = $connectorHelper;
 		$this->schemaValidator = $schemaValidator;
 		$this->dateTimeFactory = $dateTimeFactory;
 		$this->eventLoop = $eventLoop;

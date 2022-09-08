@@ -85,6 +85,10 @@ final class Device
 			return Types\DeviceProtocolVersion::VERSION_V33;
 		}
 
+		if ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY) {
+			return '712aadb9520c1dc2';
+		}
+
 		return null;
 	}
 

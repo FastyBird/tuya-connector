@@ -39,7 +39,9 @@
   "require" : {
     "php" : ">=8.0.0|>=8.1.0",
     "ext-openssl" : "*",
+    "ext-pcntl" : "*",
     "cweagans/composer-patches" : "^1.7",
+    "evenement/evenement" : "^3.0",
     "fastybird/devices-module" : "dev-main as 0.75.0",
     "fastybird/json-api" : "^0.11",
     "fastybird/metadata" : "^0.76",

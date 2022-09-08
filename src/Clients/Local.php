@@ -23,6 +23,7 @@ use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Nette;
 use Psr\Log;
+use Throwable;
 
 /**
  * Local devices client
@@ -87,7 +88,10 @@ final class Local implements Client
 			$client = $this->localApiFactory->create(
 				$deviceItem->getIdentifier(),
 				null,
-				'712aadb9520c1dc2',
+				strval($this->deviceHelper->getConfiguration(
+					$deviceItem->getId(),
+					Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY)
+				)),
 				strval($this->deviceHelper->getConfiguration(
 					$deviceItem->getId(),
 					Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
@@ -98,23 +102,26 @@ final class Local implements Client
 				))),
 			);
 
-			$client->connect();
-
-			if ($client->isConnected()) {
-				$this->devicesClients[$deviceItem->getId()->toString()] = $client;
-
-			} else {
-				$this->logger->error(
-					'Could not establish connection with device via UDP protocol',
-					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'local-client',
-						'device'    => [
-							'id' => $deviceItem->getId()->toString(),
-						],
-					]
-				);
-			}
+			$client->connect()
+				->then(function () use ($client, $deviceItem): void {
+					$this->devicesClients[$deviceItem->getId()->toString()] = $client;
+				})
+				->otherwise(function (Throwable $ex) use ($deviceItem): void {
+					$this->logger->error(
+						'Could not establish connection with device via UDP protocol',
+						[
+							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'      => 'local-client',
+							'device'    => [
+								'id' => $deviceItem->getId()->toString(),
+							],
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
+						]
+					);
+				});
 		}
 	}
 
