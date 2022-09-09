@@ -41,6 +41,7 @@ use React\Http as ReactHttp;
 use React\Socket;
 use Throwable;
 use function React\Async\async;
+use function React\Async\await;
 
 /**
  * Cloud devices client
@@ -367,7 +368,7 @@ final class Cloud implements Client
 	private function handleCommunication(): void
 	{
 		if (!$this->openApiApi->isConnected()) {
-			Async\await($this->openApiApi->connect());
+			await($this->openApiApi->connect());
 		}
 
 		foreach ($this->processedProperties as $index => $processedProperty) {
