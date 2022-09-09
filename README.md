@@ -1,5 +1,7 @@
 # FastyBird IoT Tuya connector
 
+***
+
 [![Build Status](https://badgen.net/github/checks/FastyBird/tuya-connector/master?cache=300&style=flast-square)](https://github.com/FastyBird/tuya-connector/actions)
 [![Licence](https://badgen.net/github/license/FastyBird/tuya-connector?cache=300&style=flast-square)](https://github.com/FastyBird/tuya-connector/blob/master/LICENSE.md)
 [![Code coverage](https://badgen.net/coveralls/c/github/FastyBird/tuya-connector?cache=300&style=flast-square)](https://coveralls.io/r/FastyBird/tuya-connector)
@@ -9,19 +11,16 @@
 [![Downloads total](https://badgen.net/packagist/dt/FastyBird/tuya-connector?cache=300&style=flast-square)](https://packagist.org/packages/FastyBird/tuya-connector)
 [![PHPStan](https://img.shields.io/badge/PHPStan-enabled-brightgreen.svg?style=flat-square)](https://github.com/phpstan/phpstan)
 
-![Python](https://badgen.net/pypi/python/fastybird-tuya-connector?cache=300&style=flat-square)
-[![Python latest stable](https://badgen.net/pypi/v/fastybird-tuya-connector?cache=300&style=flat-square)](https://pypi.org/project/fastybird-tuya-connector/)
-[![Python downloads month](https://img.shields.io/pypi/dm/fastybird-tuya-connector?cache=300&style=flat-square)](https://pypi.org/project/fastybird-tuya-connector/)
-[![Black](https://img.shields.io/badge/black-enabled-brightgreen.svg?style=flat-square)](https://github.com/psf/black)
-[![MyPy](https://img.shields.io/badge/mypy-enabled-brightgreen.svg?style=flat-square)](http://mypy-lang.org)
+***
 
-## What is FastyBird IoT Tuya connector?
+## What is Tuya connector?
 
-Tuya connector is a combined [FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things) extension which is integrating [Tuya](https://www.tuya.com) protocol for connected devices
+Tuya connector is a [FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things)
+extension which is integrating [Tuya](https://www.tuya.com) devices into [FastyBird](https://www.fastybird.com) IoT
+system
 
-[FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things) Tuya connector is
-an [Apache2 licensed](http://www.apache.org/licenses/LICENSE-2.0) distributed extension, developed
-in [PHP](https://www.php.net) with [Nette framework](https://nette.org) and in [Python](https://python.org).
+Tuya connector is an [Apache2 licensed](http://www.apache.org/licenses/LICENSE-2.0) distributed extension, developed
+in [PHP](https://www.php.net) with [Nette framework](https://nette.org).
 
 ### Features:
 
@@ -34,17 +33,13 @@ in [PHP](https://www.php.net) with [Nette framework](https://nette.org) and in [
 
 ## Requirements
 
-PHP part of [FastyBird](https://www.fastybird.com) Tuya connector is tested against PHP 7.4
-and [ReactPHP http](https://github.com/reactphp/http) 0.8 event-driven, streaming plaintext HTTP server
+Tuya connector is tested against PHP 8.1
+and [ReactPHP Socket](https://github.com/reactphp/socket) 1.11 async, streaming plaintext TCP/IP and secure TLS socket server and client connections
 and [Nette framework](https://nette.org/en/) 3.0 PHP framework for real programmers
-
-Python part of [FastyBird](https://www.fastybird.com) Tuya connector is tested against [Python 3.7](http://python.org)
 
 ## Installation
 
 ### Manual installation
-
-#### Application backend in PHP
 
 The best way to install **fastybird/tuya-connector** is using [Composer](http://getcomposer.org/):
 
@@ -52,21 +47,44 @@ The best way to install **fastybird/tuya-connector** is using [Composer](http://
 composer require fastybird/tuya-connector
 ```
 
-#### Application workers in Python
-
-The best way to install **fastybird-tuya-connector** is using [Pip](https://pip.pypa.io/en/stable/):
-
-```sh
-pip install fastybird-tuya-connector
-```
-
 ### Marketplace installation
 
-You could install this connector in your [FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things) application under marketplace section
+You could install this connector in your [FastyBird IoT](https://www.fastybird.com) application under marketplace
+section
 
 ## Documentation
 
-Learn how to consume & publish messages in [documentation](https://github.com/FastyBird/tuya-connector/blob/master/.docs/en/index.md).
+Learn how to connect Tuya devices and manage them with [FastyBird IoT](https://www.fastybird.com) system
+in [documentation](https://github.com/FastyBird/tuya-connector/blob/master/.docs/en/index.md).
+
+## Feedback
+
+Use the [issue tracker](https://github.com/FastyBird/tuya-connector/issues) for bugs
+or [mail](mailto:code@fastybird.com) or [Tweet](https://twitter.com/fastybird) us for any idea that can improve the
+project.
+
+Thank you for testing, reporting and contributing.
+
+## Changelog
+
+For release info check [release page](https://github.com/FastyBird/tuya-connector/releases)
+
+## Maintainers
+
+<table>
+	<tbody>
+		<tr>
+			<td align="center">
+				<a href="https://github.com/akadlec">
+					<img width="80" height="80" src="https://avatars3.githubusercontent.com/u/1866672?s=460&amp;v=4">
+				</a>
+				<br>
+				<a href="https://github.com/akadlec">Adam Kadlec</a>
+			</td>
+		</tr>
+	</tbody>
+</table>
 
 ***
-Homepage [https://www.fastybird.com](https://www.fastybird.com) and repository [https://github.com/FastyBird/tuya-connector](https://github.com/FastyBird/tuya-connector).
+Homepage [https://www.fastybird.com](https://www.fastybird.com) and
+repository [https://github.com/fastybird/tuya-connector](https://github.com/fastybird/tuya-connector).

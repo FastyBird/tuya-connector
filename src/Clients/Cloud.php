@@ -221,6 +221,9 @@ final class Cloud implements Client
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'   => 'cloud-client',
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
+						],
 					]
 				);
 
@@ -240,6 +243,9 @@ final class Cloud implements Client
 								'code'   => $code,
 								'reason' => $reason,
 							],
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
+							],
 						]
 					);
 
@@ -250,6 +256,25 @@ final class Cloud implements Client
 					}
 
 					$this->wsConnection = null;
+				});
+
+				$connection->on('error', function (Throwable $ex): void {
+					$this->logger->error(
+						'An error occurred on WS connection',
+						[
+							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'      => 'cloud-client',
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
+							],
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
+						]
+					);
+
+					throw new DevicesModuleExceptions\TerminateException('Connection to WS server was terminated');
 				});
 
 				$this->pingTimer = $this->eventLoop->addPeriodicTimer(
@@ -272,6 +297,9 @@ final class Cloud implements Client
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'cloud-client',
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
+						],
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
@@ -312,14 +340,6 @@ final class Cloud implements Client
 
 			$this->handlerTimer = null;
 		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function isConnected(): bool
-	{
-		return $this->wsConnection !== null;
 	}
 
 	/**
@@ -462,6 +482,9 @@ final class Cloud implements Client
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'cloud-client',
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
+							],
 							'exception' => [
 								'message' => $ex->getMessage(),
 								'code'    => $ex->getCode(),
@@ -504,6 +527,9 @@ final class Cloud implements Client
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'cloud-client',
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
+							],
 							'exception' => [
 								'message' => $ex->getMessage(),
 								'code'    => $ex->getCode(),
@@ -595,6 +621,9 @@ final class Cloud implements Client
 													'message' => $ex->getMessage(),
 													'code'    => $ex->getCode(),
 												],
+												'connector' => [
+													'id' => $this->connector->getId()->toString(),
+												],
 												'device'    => [
 													'id' => $device->getId()->toString(),
 												],
@@ -650,6 +679,9 @@ final class Cloud implements Client
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
 					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 					'data'      => [
 						'message' => $message,
 					],
@@ -675,6 +707,9 @@ final class Cloud implements Client
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
 						],
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
+						],
 						'data'      => [
 							'message' => $message,
 						],
@@ -689,6 +724,9 @@ final class Cloud implements Client
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'cloud-client',
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 				]
 			);
 
@@ -703,6 +741,9 @@ final class Cloud implements Client
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'cloud-client',
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 				]
 			);
 
@@ -714,6 +755,9 @@ final class Cloud implements Client
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 				'type'   => 'cloud-client',
+				'connector' => [
+					'id' => $this->connector->getId()->toString(),
+				],
 				'data'   => [
 					'payload' => $payload,
 				],
@@ -736,6 +780,9 @@ final class Cloud implements Client
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
 					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 					'data'      => [
 						'payload' => $payload,
 					],
@@ -751,6 +798,9 @@ final class Cloud implements Client
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'cloud-client',
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 				]
 			);
 
@@ -765,6 +815,9 @@ final class Cloud implements Client
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'cloud-client',
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 				]
 			);
 
@@ -791,6 +844,9 @@ final class Cloud implements Client
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'cloud-client',
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
+					],
 				]
 			);
 
@@ -802,6 +858,9 @@ final class Cloud implements Client
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 				'type'   => 'cloud-client',
+				'connector' => [
+					'id' => $this->connector->getId()->toString(),
+				],
 				'data'   => $decryptedData,
 			]
 		);
@@ -821,6 +880,9 @@ final class Cloud implements Client
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
+					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
 					],
 					'data'      => [
 						'data' => $decryptedData,

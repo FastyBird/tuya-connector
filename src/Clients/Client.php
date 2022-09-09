@@ -43,11 +43,6 @@ interface Client
 	public function writeChannelControl(MetadataEntities\Actions\IActionChannelControlEntity $action): void;
 
 	/**
-	 * @return bool
-	 */
-	public function isConnected(): bool;
-
-	/**
 	 * Create servers/clients
 	 *
 	 * @return void

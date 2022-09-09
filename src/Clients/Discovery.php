@@ -203,7 +203,7 @@ final class Discovery
 				$this->connection = $server;
 			} catch (Throwable $ex) {
 				$this->logger->error(
-					'Could not create local UDP server',
+					'Could not create local discovery server',
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'discovery-client',
@@ -333,7 +333,7 @@ final class Discovery
 
 		if ($encryptedPacket === false) {
 			$this->logger->error(
-				'Received invalid UDP packet. Received data could not be decrypted',
+				'Received invalid packet. Received data could not be decrypted',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'   => 'discovery-client',
@@ -390,7 +390,7 @@ final class Discovery
 
 		} catch (Utils\JsonException $ex) {
 			$this->logger->error(
-				'Received invalid UDP packet. Received data are not valid JSON string',
+				'Received invalid packet. Received data are not valid JSON string',
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'      => 'discovery-client',
@@ -414,22 +414,61 @@ final class Discovery
 		array $devices,
 	): void {
 		foreach ($devices as $device) {
-			/*
 			$localApi = $this->localApiFactory->create(
+				$device->getId(),
 				$device->getId(),
 				'46664614c91aefae',
 				$device->getIpAddress(),
-				$device->getVersion()
+				Types\DeviceProtocolVersion::get($device->getVersion())
 			);
 
-			$localApi->connect();
+			try {
+				Async\await($localApi->connect());
+			} catch (Throwable $ex) {
+				$this->logger->error(
+					'Could not create connection with device',
+					[
+						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'      => 'discovery-client',
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
+					]
+				);
 
-			if ($localApi->isConnected()) {
-				$deviceStates = $localApi->readStates();
+				continue;
 			}
-			*/
 
-			$this->consumer->append($device);
+			try {
+				if ($localApi->isConnected()) {
+					$deviceStates = Async\await($localApi->readStates());
+				} else {
+					$this->logger->error(
+						'Could not connect to device',
+						[
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'   => 'discovery-client',
+						]
+					);
+				}
+
+				$this->consumer->append($device);
+			} catch (Throwable $ex) {
+				$this->logger->error(
+					'Could not read device data points states',
+					[
+						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'      => 'discovery-client',
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
+					]
+				);
+
+				continue;
+			}
 		}
 	}
 

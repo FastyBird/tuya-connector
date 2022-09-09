@@ -32,8 +32,8 @@ use React\EventLoop;
 final class LocalApiFactory
 {
 
-	/** @var OpenApiEntityFactory */
-	private OpenApiEntityFactory $entityFactory;
+	/** @var EntityFactory */
+	private EntityFactory $entityFactory;
 
 	/** @var MetadataSchemas\IValidator */
 	private MetadataSchemas\IValidator $schemaValidator;
@@ -48,14 +48,14 @@ final class LocalApiFactory
 	private Log\LoggerInterface $logger;
 
 	/**
-	 * @param OpenApiEntityFactory $entityFactory
+	 * @param EntityFactory $entityFactory
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
 	 * @param EventLoop\LoopInterface $eventLoop
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
-		OpenApiEntityFactory $entityFactory,
+		EntityFactory $entityFactory,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
 		EventLoop\LoopInterface $eventLoop,
@@ -91,6 +91,8 @@ final class LocalApiFactory
 			$localKey,
 			$ipAddress,
 			$protocolVersion,
+			$this->entityFactory,
+			$this->schemaValidator,
 			$this->dateTimeFactory,
 			$this->eventLoop,
 			$this->logger

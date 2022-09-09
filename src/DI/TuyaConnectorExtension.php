@@ -119,7 +119,7 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			->setType(API\OpenApiFactory::class);
 
 		$builder->addDefinition($this->prefix('api.openApi.entityFactory'))
-			->setType(API\OpenApiEntityFactory::class);
+			->setType(API\EntityFactory::class);
 
 		$builder->addDefinition($this->prefix('api.localApi.api'))
 			->setType(API\LocalApiFactory::class);

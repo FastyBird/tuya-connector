@@ -21,7 +21,7 @@ env:
 
 jobs:
   qa:
-    name: "Quality assurance of PHP code"
+    name: "Code quality assurance"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -81,7 +81,7 @@ jobs:
         run: "make cs"
 
   static-analysis:
-    name: "Static analysis of PHP code"
+    name: "Code static analysis"
     runs-on: "${{ matrix.operating-system }}"
 
     strategy:
@@ -138,7 +138,7 @@ jobs:
         run: "make phpstan"
 
   tests:
-    name: "Tests of PHP code"
+    name: "Code tests"
     runs-on: "${{ matrix.operating-system }}"
     needs: ["qa", "static-analysis"]
 
@@ -210,7 +210,7 @@ jobs:
           path: tests/**/output
 
   tests-code-coverage:
-    name: "Tests of PHP code with code coverage"
+    name: "Code tests with code coverage"
     runs-on: "${{ matrix.operating-system }}"
     needs: ["tests"]
 

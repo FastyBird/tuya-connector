@@ -35,8 +35,8 @@ use React\EventLoop;
 final class OpenApiFactory
 {
 
-	/** @var OpenApiEntityFactory */
-	private OpenApiEntityFactory $entityFactory;
+	/** @var EntityFactory */
+	private EntityFactory $entityFactory;
 
 	/** @var Helpers\Connector */
 	private Helpers\Connector $connectorHelper;
@@ -54,7 +54,7 @@ final class OpenApiFactory
 	private Log\LoggerInterface $logger;
 
 	/**
-	 * @param OpenApiEntityFactory $entityFactory
+	 * @param EntityFactory $entityFactory
 	 * @param Helpers\Connector $connectorHelper
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
@@ -62,7 +62,7 @@ final class OpenApiFactory
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
-		OpenApiEntityFactory $entityFactory,
+		EntityFactory $entityFactory,
 		Helpers\Connector $connectorHelper,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,

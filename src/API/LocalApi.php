@@ -19,10 +19,13 @@ use DateTimeInterface;
 use Evenement;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
+use FastyBird\Metadata\Schemas as MetadataSchemas;
+use FastyBird\TuyaConnector;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Types;
 use Nette;
+use Nette\Utils;
 use Psr\Log;
 use React\EventLoop;
 use React\Promise;
@@ -50,6 +53,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	private const HEARTBEAT_TIMEOUT = 10.0;
 
 	private const WAIT_FOR_REPLY_TIMEOUT = 5.0;
+
+	public const DP_STATUS_MESSAGE_SCHEMA_FILENAME = 'localapi_dp_query.json';
+	public const DP_QUERY_MESSAGE_SCHEMA_FILENAME = 'localapi_dp_status.json';
+	public const WIFI_QUERY_MESSAGE_SCHEMA_FILENAME = 'localapi_wifi_query.json';
 
 	/** @var string */
 	private string $identifier;
@@ -84,11 +91,17 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/** @var Socket\ConnectionInterface|null */
 	private ?Socket\ConnectionInterface $connection = null;
 
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
+	/** @var EntityFactory */
+	private EntityFactory $entityFactory;
+
+	/** @var MetadataSchemas\IValidator */
+	private MetadataSchemas\IValidator $schemaValidator;
 
 	/** @var DateTimeFactory\DateTimeFactory */
 	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
+
+	/** @var EventLoop\LoopInterface */
+	private EventLoop\LoopInterface $eventLoop;
 
 	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
@@ -99,6 +112,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	 * @param string $localKey
 	 * @param string $ipAddress
 	 * @param Types\DeviceProtocolVersion $protocolVersion
+	 * @param EntityFactory $entityFactory
+	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
 	 * @param EventLoop\LoopInterface $eventLoop
 	 * @param Log\LoggerInterface|null $logger
@@ -109,6 +124,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		string $localKey,
 		string $ipAddress,
 		Types\DeviceProtocolVersion $protocolVersion,
+		EntityFactory $entityFactory,
+		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
 		EventLoop\LoopInterface $eventLoop,
 		?Log\LoggerInterface $logger = null
@@ -119,6 +136,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->ipAddress = $ipAddress;
 		$this->protocolVersion = $protocolVersion;
 
+		$this->entityFactory = $entityFactory;
+		$this->schemaValidator = $schemaValidator;
 		$this->dateTimeFactory = $dateTimeFactory;
 		$this->eventLoop = $eventLoop;
 
@@ -185,6 +204,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 									]
 								);
 							}
+
+							$this->emit('message', [$message]);
 						}
 					});
 
@@ -525,6 +546,28 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 			$sequenceNr = (int) (($buffer[5] << 24) + ($buffer[6] << 16) + ($buffer[7] << 8) + $buffer[8]);
 			$command = (int) (($buffer[9] << 24) + ($buffer[10] << 16) + ($buffer[11] << 8) + $buffer[12]);
+
+			if (!Types\LocalDeviceCommand::isValidValue($command)) {
+				$this->logger->error(
+					'Received unknown command',
+					[
+						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'    => 'localapi-api',
+						'device'  => [
+							'identifier' => $this->identifier,
+						],
+						'message' => [
+							'command'  => $command,
+							'sequence' => $sequenceNr,
+						],
+					]
+				);
+
+				return null;
+			}
+
+			$command = Types\LocalDeviceCommand::get($command);
+
 			$size = (int) (($buffer[13] << 24) + ($buffer[14] << 16) + ($buffer[15] << 8) + $buffer[16]);
 			$returnCode = (int) (($buffer[17] << 24) + ($buffer[18] << 16) + ($buffer[19] << 8) + $buffer[20]);
 			$crc = (int) (($buffer[$bufferSize - 7] << 24) + ($buffer[$bufferSize - 6] << 16) + ($buffer[$bufferSize - 5] << 8) + $buffer[$bufferSize - 4]);
@@ -538,8 +581,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			if (crc32($bodyPartPacked) !== $crc) {
 				return null;
 			}
-
-			$payload = null;
 
 			if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
 				$data = array_slice($buffer, 20, $bufferSize - 8);
@@ -578,9 +619,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						$this->logger->error(
 							'Received message payload could not be decoded',
 							[
-								'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'    => 'localapi-api',
-								'device'  => [
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'   => 'localapi-api',
+								'device' => [
 									'identifier' => $this->identifier,
 								],
 							]
@@ -588,12 +629,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 						return null;
 					}
+				} else {
+					return null;
 				}
 			} elseif ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V33)) {
 				if ($size > 12) {
 					$data = array_slice($buffer, 20, ($size + 8) - 20);
 
-					if ($command === Types\LocalDeviceCommand::CMD_STATUS) {
+					if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
 						$data = array_slice($data, 15);
 					}
 
@@ -608,9 +651,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						$this->logger->error(
 							'Received message payload could not be decoded',
 							[
-								'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'    => 'localapi-api',
-								'device'  => [
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'   => 'localapi-api',
+								'device' => [
 									'identifier' => $this->identifier,
 								],
 							]
@@ -618,7 +661,27 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 						return null;
 					}
+				} else {
+					return null;
 				}
+			} else {
+				$this->logger->warning(
+					'Received message from device with unsupported version',
+					[
+						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'    => 'localapi-api',
+						'device'  => [
+							'identifier' => $this->identifier,
+						],
+						'message' => [
+							'command'    => $command->getValue(),
+							'sequence'   => $sequenceNr,
+							'returnCode' => $returnCode,
+						],
+					]
+				);
+
+				return null;
 			}
 
 			$this->logger->debug(
@@ -630,7 +693,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						'identifier' => $this->identifier,
 					],
 					'message' => [
-						'command'    => $command,
+						'command'    => $command->getValue(),
 						'data'       => $payload,
 						'sequence'   => $sequenceNr,
 						'returnCode' => $returnCode,
@@ -638,9 +701,46 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				]
 			);
 
+			if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
+				$parsedMessage = $this->schemaValidator->validate(
+					$payload,
+					$this->getSchemaFilePath(self::DP_STATUS_MESSAGE_SCHEMA_FILENAME)
+				);
+
+				$entity = $this->entityFactory->build(
+					Entities\API\DeviceInformation::class,
+					$parsedMessage
+				);
+			} elseif (
+				$command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)
+				|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY_NEW)
+			) {
+				$parsedMessage = $this->schemaValidator->validate(
+					$payload,
+					$this->getSchemaFilePath(self::DP_QUERY_MESSAGE_SCHEMA_FILENAME)
+				);
+
+				$entity = $this->entityFactory->build(
+					Entities\API\DeviceInformation::class,
+					$parsedMessage
+				);
+			} elseif ($command->equalsValue(Types\LocalDeviceCommand::CMD_QUERY_WIFI)) {
+				$parsedMessage = $this->schemaValidator->validate(
+					$payload,
+					$this->getSchemaFilePath(self::WIFI_QUERY_MESSAGE_SCHEMA_FILENAME)
+				);
+
+				$entity = $this->entityFactory->build(
+					Entities\API\DeviceInformation::class,
+					$parsedMessage
+				);
+			} else {
+				$entity = $payload;
+			}
+
 			return new Entities\API\DeviceRawMessage(
 				$this->identifier,
-				Types\LocalDeviceCommand::get($command),
+				$command,
 				$sequenceNr,
 				$hasReturnCode ? $returnCode : null,
 				$payload
@@ -799,6 +899,23 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			$crcHb,
 			array_slice($bufferHb, count($bufferHb) - 4)
 		);
+	}
+
+	/**
+	 * @param string $schemaFilename
+	 *
+	 * @return string
+	 */
+	private function getSchemaFilePath(string $schemaFilename): string
+	{
+		try {
+			$schema = Utils\FileSystem::read(TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename);
+
+		} catch (Nette\IOException) {
+			throw new Exceptions\LocalApiCall('Validation schema for response could not be loaded');
+		}
+
+		return $schema;
 	}
 
 }

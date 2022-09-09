@@ -99,8 +99,8 @@ final class OpenApi
 	/** @var Entities\API\TuyaTokenInfo|null */
 	private ?Entities\API\TuyaTokenInfo $tokenInfo = null;
 
-	/** @var OpenApiEntityFactory */
-	private OpenApiEntityFactory $entityFactory;
+	/** @var EntityFactory */
+	private EntityFactory $entityFactory;
 
 	/** @var MetadataSchemas\IValidator */
 	private MetadataSchemas\IValidator $schemaValidator;
@@ -122,7 +122,7 @@ final class OpenApi
 	 * @param string $accessSecret
 	 * @param string $lang
 	 * @param Types\OpenApiEndpoint $endpoint
-	 * @param OpenApiEntityFactory $entityFactory
+	 * @param EntityFactory $entityFactory
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
 	 * @param EventLoop\LoopInterface $eventLoop
@@ -133,7 +133,7 @@ final class OpenApi
 		string $accessSecret,
 		string $lang,
 		Types\OpenApiEndpoint $endpoint,
-		OpenApiEntityFactory $entityFactory,
+		EntityFactory $entityFactory,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
 		EventLoop\LoopInterface $eventLoop,

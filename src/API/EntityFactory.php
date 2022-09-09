@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * OpenApiEntityFactory.php
+ * EntityFactory.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -30,14 +30,14 @@ use stdClass;
 use Throwable;
 
 /**
- * OpenAPI data entity factory
+ * API data entity factory
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     API
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class OpenApiEntityFactory
+final class EntityFactory
 {
 
 	/**

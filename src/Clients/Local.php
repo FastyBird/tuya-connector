@@ -19,6 +19,7 @@ use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\TuyaConnector\API;
+use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Nette;
@@ -102,13 +103,29 @@ final class Local implements Client
 				))),
 			);
 
+			$this->devicesClients[$deviceItem->getId()->toString()] = $client;
+
+			$client->on('message', function (Entities\API\Entity $message): void {
+				var_dump('RECEIVED');
+				var_dump($message->toArray());
+			});
+
 			$client->connect()
-				->then(function () use ($client, $deviceItem): void {
-					$this->devicesClients[$deviceItem->getId()->toString()] = $client;
+				->then(function () use ($deviceItem): void {
+					$this->logger->debug(
+						'Connected to device',
+						[
+							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'      => 'local-client',
+							'device'    => [
+								'id' => $deviceItem->getId()->toString(),
+							],
+						]
+					);
 				})
 				->otherwise(function (Throwable $ex) use ($deviceItem): void {
 					$this->logger->error(
-						'Could not establish connection with device via UDP protocol',
+						'Could not establish connection with device via local protocol',
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'local-client',
@@ -133,14 +150,6 @@ final class Local implements Client
 		foreach ($this->devicesClients as $client) {
 			$client->disconnect();
 		}
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function isConnected(): bool
-	{
-		return false;
 	}
 
 	/**
