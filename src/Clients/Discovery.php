@@ -28,11 +28,11 @@ use Nette;
 use Nette\Utils;
 use Psr\EventDispatcher as PsrEventDispatcher;
 use Psr\Log;
-use React\Async;
 use React\Datagram;
 use React\EventLoop;
 use SplObjectStorage;
 use Throwable;
+use function React\Async\await;
 
 /**
  * Devices discovery client
@@ -192,7 +192,7 @@ final class Discovery
 
 			try {
 				/** @var Datagram\Socket $server */
-				$server = Async\await($this->serverFactory->createServer(
+				$server = await($this->serverFactory->createServer(
 					self::UDP_BIND_IP . ':' . self::UDP_PORT[$protocolVersion]
 				));
 
@@ -267,7 +267,7 @@ final class Discovery
 
 		try {
 			/** @var Entities\API\DeviceInformation[] $devices */
-			$devices = Async\await($this->openApiApi->getDevices([
+			$devices = await($this->openApiApi->getDevices([
 				'source_id'   => $this->connectorHelper->getConfiguration($this->connector->getId(), Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_UID)),
 				'source_type' => 'tuyaUser',
 			]));
@@ -290,7 +290,7 @@ final class Discovery
 
 		try {
 			/** @var Entities\API\DeviceFactoryInfos[] $devicesFactoryInfos */
-			$devicesFactoryInfos = Async\await($this->openApiApi->getDevicesFactoryInfos(
+			$devicesFactoryInfos = await($this->openApiApi->getDevicesFactoryInfos(
 				array_map(function (Entities\API\DeviceInformation $userDevice): string {
 					return $userDevice->getId();
 				}, $devices)
@@ -423,7 +423,7 @@ final class Discovery
 			);
 
 			try {
-				Async\await($localApi->connect());
+				await($localApi->connect());
 			} catch (Throwable $ex) {
 				$this->logger->error(
 					'Could not create connection with device',
@@ -442,7 +442,7 @@ final class Discovery
 
 			try {
 				if ($localApi->isConnected()) {
-					$deviceStates = Async\await($localApi->readStates());
+					$deviceStates = await($localApi->readStates());
 				} else {
 					$this->logger->error(
 						'Could not connect to device',
@@ -503,7 +503,7 @@ final class Discovery
 
 			try {
 				/** @var Entities\API\DeviceSpecification $deviceSpecifications */
-				$deviceSpecifications = Async\await($this->openApiApi->getDeviceSpecification($device->getId()));
+				$deviceSpecifications = await($this->openApiApi->getDeviceSpecification($device->getId()));
 
 				$dataPointsInfos = [];
 

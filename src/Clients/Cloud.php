@@ -36,11 +36,11 @@ use Nette\Utils;
 use Psr\Log;
 use Ratchet;
 use Ratchet\RFC6455;
-use React\Async;
 use React\EventLoop;
 use React\Http as ReactHttp;
 use React\Socket;
 use Throwable;
+use function React\Async\async;
 
 /**
  * Cloud devices client
@@ -989,7 +989,7 @@ final class Cloud implements Client
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
-			Async\async(function (): void {
+			async(function (): void {
 				$this->handleCommunication();
 			})
 		);

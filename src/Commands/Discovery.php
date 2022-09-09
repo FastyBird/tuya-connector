@@ -29,7 +29,6 @@ use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use Ramsey\Uuid;
-use React\Async;
 use React\EventLoop;
 use Symfony\Component\Console;
 use Symfony\Component\Console\Input;
@@ -37,6 +36,7 @@ use Symfony\Component\Console\Output;
 use Symfony\Component\Console\Style;
 use Symfony\Component\EventDispatcher;
 use Throwable;
+use function React\Async\async;
 
 /**
  * Connector devices discovery command
@@ -334,21 +334,21 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 
 			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
 				self::QUEUE_PROCESSING_INTERVAL,
-				Async\async(function (): void {
+				async(function (): void {
 					$this->consumer->consume();
 				})
 			);
 
 			$this->progressBarTimer = $this->eventLoop->addPeriodicTimer(
 				0.1,
-				Async\async(function () use ($progressBar): void {
+				async(function () use ($progressBar): void {
 					$progressBar->advance();
 				})
 			);
 
 			$this->eventLoop->addTimer(
 				self::DISCOVERY_MAX_PROCESSING_INTERVAL,
-				Async\async(function (): void {
+				async(function (): void {
 					$this->client?->disconnect();
 
 					$this->checkAndTerminate();
