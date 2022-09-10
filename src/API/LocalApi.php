@@ -166,6 +166,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 							if (array_key_exists($message->getSequence(), $this->messagesListeners)) {
 								$this->messagesListeners[$message->getSequence()]->resolve($message->getData());
+
+								unset($this->messagesListeners[$message->getSequence()]);
+
+								return;
 							}
 
 							if ($message->getCommand()->equalsValue(Types\LocalDeviceCommand::CMD_HEART_BEAT)) {
