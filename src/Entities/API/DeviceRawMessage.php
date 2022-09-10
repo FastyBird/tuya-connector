@@ -43,22 +43,22 @@ final class DeviceRawMessage implements Entity
 	/** @var int|null */
 	private ?int $returnCode;
 
-	/** @var string|null */
-	private ?string $data;
+	/** @var string|Entity|Entity[]|null */
+	private string|Entity|array|null $data;
 
 	/**
 	 * @param string $identifier
 	 * @param Types\LocalDeviceCommand $command
 	 * @param int $sequence
 	 * @param int|null $returnCode
-	 * @param string|null $data
+	 * @param string|Entity|Entity[]|null $data
 	 */
 	public function __construct(
 		string $identifier,
 		Types\LocalDeviceCommand $command,
 		int $sequence,
 		?int $returnCode,
-		?string $data
+		string|Entity|array|null $data
 	) {
 		$this->identifier = $identifier;
 		$this->command = $command;
@@ -100,9 +100,9 @@ final class DeviceRawMessage implements Entity
 	}
 
 	/**
-	 * @return string|null
+	 * @return string|Entity|Entity[]|null
 	 */
-	public function getData(): ?string
+	public function getData(): string|Entity|array|null
 	{
 		return $this->data;
 	}
@@ -113,11 +113,15 @@ final class DeviceRawMessage implements Entity
 	public function toArray(): array
 	{
 		return [
-			'identifier'  => $this->getIdentifier(),
-			'command'     => $this->getCommand()->getValue(),
-			'sequence'    => $this->getSequence(),
+			'identifier' => $this->getIdentifier(),
+			'command' => $this->getCommand()->getValue(),
+			'sequence' => $this->getSequence(),
 			'return_code' => $this->getReturnCode(),
-			'data'        => $this->getData(),
+			'data' => $this->getData() instanceof Entity ? $this->getData()->toArray() : (is_array($this->getData()) ? array_map(function (
+				Entity $entity
+			): array {
+				return $entity->toArray();
+			}, $this->getData()) : $this->getData()),
 		];
 	}
 

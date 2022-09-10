@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * DeviceStatus.php
+ * DeviceWifiScan.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -10,7 +10,7 @@
  * @subpackage     Entities
  * @since          0.13.0
  *
- * @date           29.04.22
+ * @date           26.04.22
  */
 
 namespace FastyBird\TuyaConnector\Entities\API;
@@ -18,50 +18,50 @@ namespace FastyBird\TuyaConnector\Entities\API;
 use Nette;
 
 /**
- * OpenAPI device detail status entity
+ * Device wifi scan result message entity
  *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Entities
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class DeviceStatus implements Entity
+final class DeviceWifiScan implements Entity
 {
 
 	use Nette\SmartObject;
 
 	/** @var string */
-	private string $code;
+	private string $identifier;
 
-	/** @var string|int|float|bool */
-	private string|int|float|bool $value;
+	/** @var string[] */
+	private array $ssids;
 
 	/**
-	 * @param string $code
-	 * @param string|int|float|bool $value
+	 * @param string $identifier
+	 * @param string[] $ssids
 	 */
 	public function __construct(
-		string $code,
-		string|int|float|bool $value
+		string $identifier,
+		array $ssids
 	) {
-		$this->code = $code;
-		$this->value = $value;
+		$this->identifier = $identifier;
+		$this->ssids = $ssids;
 	}
 
 	/**
 	 * @return string
 	 */
-	public function getCode(): string
+	public function getIdentifier(): string
 	{
-		return $this->code;
+		return $this->identifier;
 	}
 
 	/**
-	 * @return bool|float|int|string
+	 * @return string[]
 	 */
-	public function getValue(): float|bool|int|string
+	public function getSsids(): array
 	{
-		return $this->value;
+		return $this->ssids;
 	}
 
 	/**
@@ -70,8 +70,8 @@ final class DeviceStatus implements Entity
 	public function toArray(): array
 	{
 		return [
-			'code'  => $this->getCode(),
-			'value' => $this->getValue(),
+			'identifier' => $this->getIdentifier(),
+			'ssids'      => $this->getSsids(),
 		];
 	}
 

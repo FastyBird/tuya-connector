@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * UserDeviceStatus.php
+ * DeviceDataPointStatus.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -10,7 +10,7 @@
  * @subpackage     Entities
  * @since          0.13.0
  *
- * @date           26.04.22
+ * @date           29.04.22
  */
 
 namespace FastyBird\TuyaConnector\Entities\API;
@@ -25,7 +25,7 @@ use Nette;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class UserDeviceStatus implements Entity
+final class DeviceDataPointStatus implements Entity
 {
 
 	use Nette\SmartObject;
@@ -36,22 +36,16 @@ final class UserDeviceStatus implements Entity
 	/** @var string|int|float|bool */
 	private string|int|float|bool $value;
 
-	/** @var string|null */
-	private ?string $type;
-
 	/**
 	 * @param string $code
 	 * @param string|int|float|bool $value
-	 * @param string|null $type
 	 */
 	public function __construct(
 		string $code,
-		string|int|float|bool $value,
-		?string $type
+		string|int|float|bool $value
 	) {
 		$this->code = $code;
 		$this->value = $value;
-		$this->type = $type;
 	}
 
 	/**
@@ -71,14 +65,6 @@ final class UserDeviceStatus implements Entity
 	}
 
 	/**
-	 * @return string|null
-	 */
-	public function getType(): ?string
-	{
-		return $this->type;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	public function toArray(): array
@@ -86,7 +72,6 @@ final class UserDeviceStatus implements Entity
 		return [
 			'code'  => $this->getCode(),
 			'value' => $this->getValue(),
-			'type'  => $this->getType(),
 		];
 	}
 

@@ -91,9 +91,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/** @var Socket\ConnectionInterface|null */
 	private ?Socket\ConnectionInterface $connection = null;
 
-	/** @var EntityFactory */
-	private EntityFactory $entityFactory;
-
 	/** @var MetadataSchemas\IValidator */
 	private MetadataSchemas\IValidator $schemaValidator;
 
@@ -112,7 +109,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	 * @param string $localKey
 	 * @param string $ipAddress
 	 * @param Types\DeviceProtocolVersion $protocolVersion
-	 * @param EntityFactory $entityFactory
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
 	 * @param EventLoop\LoopInterface $eventLoop
@@ -124,7 +120,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		string $localKey,
 		string $ipAddress,
 		Types\DeviceProtocolVersion $protocolVersion,
-		EntityFactory $entityFactory,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
 		EventLoop\LoopInterface $eventLoop,
@@ -136,7 +131,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->ipAddress = $ipAddress;
 		$this->protocolVersion = $protocolVersion;
 
-		$this->entityFactory = $entityFactory;
 		$this->schemaValidator = $schemaValidator;
 		$this->dateTimeFactory = $dateTimeFactory;
 		$this->eventLoop = $eventLoop;
@@ -171,7 +165,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 							var_dump($message->toArray());
 
 							if (array_key_exists($message->getSequence(), $this->messagesListeners)) {
-								$this->messagesListeners[$message->getSequence()]->resolve($message);
+								$this->messagesListeners[$message->getSequence()]->resolve($message->getData());
 							}
 
 							if ($message->getCommand()->equalsValue(Types\LocalDeviceCommand::CMD_HEART_BEAT)) {
@@ -336,7 +330,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
 			self::WAIT_FOR_REPLY_TIMEOUT,
 			function () use ($deferred, $sequenceNr): void {
-				$deferred->reject(new Exceptions\LocalApiCall('Sending command to device failed'));
+				$deferred->reject(new Exceptions\LocalApiTimeout('Sending command to device failed'));
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
@@ -365,7 +359,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
 			self::WAIT_FOR_REPLY_TIMEOUT,
 			function () use ($deferred, $sequenceNr): void {
-				$deferred->reject(new Exceptions\LocalApiCall('Sending command to device failed'));
+				$deferred->reject(new Exceptions\LocalApiTimeout('Sending command to device failed'));
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
@@ -701,41 +695,44 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				]
 			);
 
-			if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
-				$parsedMessage = $this->schemaValidator->validate(
-					$payload,
-					$this->getSchemaFilePath(self::DP_STATUS_MESSAGE_SCHEMA_FILENAME)
-				);
-
-				$entity = $this->entityFactory->build(
-					Entities\API\DeviceInformation::class,
-					$parsedMessage
-				);
-			} elseif (
-				$command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)
+			if (
+				$command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)
+				|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)
 				|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY_NEW)
 			) {
-				$parsedMessage = $this->schemaValidator->validate(
-					$payload,
-					$this->getSchemaFilePath(self::DP_QUERY_MESSAGE_SCHEMA_FILENAME)
-				);
+				if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
+					$parsedMessage = $this->schemaValidator->validate(
+						$payload,
+						$this->getSchemaFilePath(self::DP_STATUS_MESSAGE_SCHEMA_FILENAME)
+					);
+				} else {
+					$parsedMessage = $this->schemaValidator->validate(
+						$payload,
+						$this->getSchemaFilePath(self::DP_QUERY_MESSAGE_SCHEMA_FILENAME)
+					);
+				}
 
-				$entity = $this->entityFactory->build(
-					Entities\API\DeviceInformation::class,
-					$parsedMessage
-				);
+				$entityOrData = [];
+
+				foreach ((array) $parsedMessage->offsetGet('dps') as $key => $value) {
+					if (is_string($value) || is_numeric($value) || is_bool($value)) {
+						$entityOrData[] = new Entities\API\DeviceDataPointStatus($key, $value);
+					}
+				}
 			} elseif ($command->equalsValue(Types\LocalDeviceCommand::CMD_QUERY_WIFI)) {
 				$parsedMessage = $this->schemaValidator->validate(
 					$payload,
 					$this->getSchemaFilePath(self::WIFI_QUERY_MESSAGE_SCHEMA_FILENAME)
 				);
 
-				$entity = $this->entityFactory->build(
-					Entities\API\DeviceInformation::class,
-					$parsedMessage
+				$entityOrData = new Entities\API\DeviceWifiScan(
+					$this->identifier,
+					array_map(function ($item): string {
+						return strval($item);
+					}, (array) $parsedMessage->offsetGet('ssid_list'))
 				);
 			} else {
-				$entity = $payload;
+				$entityOrData = $payload;
 			}
 
 			return new Entities\API\DeviceRawMessage(
@@ -743,7 +740,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$command,
 				$sequenceNr,
 				$hasReturnCode ? $returnCode : null,
-				$payload
+				$entityOrData
 			);
 		}
 

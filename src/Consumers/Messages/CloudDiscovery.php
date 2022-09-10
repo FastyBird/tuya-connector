@@ -104,9 +104,12 @@ final class CloudDiscovery implements Consumer
 	 * @param DevicesModuleModels\Devices\Attributes\IAttributesManager $attributesManager
 	 * @param DevicesModuleModels\Channels\IChannelsRepository $channelsRepository
 	 * @param DevicesModuleModels\Channels\IChannelsManager $channelsManager
+	 * @param DevicesModuleModels\Channels\Properties\IPropertiesRepository $channelsPropertiesRepository
+	 * @param DevicesModuleModels\Channels\Properties\IPropertiesManager $channelsPropertiesManager
 	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository
 	 * @param DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesDataStorageRepository
 	 * @param DevicesModuleModels\DataStorage\IDeviceAttributesRepository $attributesDataStorageRepository
+	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelsPropertiesDataStorageRepository
 	 * @param Helpers\Database $databaseHelper
 	 * @param Log\LoggerInterface|null $logger
 	 */

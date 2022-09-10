@@ -63,7 +63,7 @@ final class UserDeviceDetail implements Entity
 	/** @var bool */
 	private bool $online;
 
-	/** @var UserDeviceStatus[] */
+	/** @var UserDeviceDataPointStatus[] */
 	private array $status;
 
 	/** @var int|null */
@@ -99,7 +99,7 @@ final class UserDeviceDetail implements Entity
 	 * @param string $uuid
 	 * @param string|null $ownerId
 	 * @param bool $online
-	 * @param UserDeviceStatus[] $status
+	 * @param UserDeviceDataPointStatus[] $status
 	 * @param int|null $activeTime
 	 * @param int|null $createTime
 	 * @param int|null $updateTime
@@ -239,7 +239,7 @@ final class UserDeviceDetail implements Entity
 	}
 
 	/**
-	 * @return UserDeviceStatus[]
+	 * @return UserDeviceDataPointStatus[]
 	 */
 	public function getStatus(): array
 	{
@@ -319,7 +319,7 @@ final class UserDeviceDetail implements Entity
 			'uuid'         => $this->getUuid(),
 			'owner_id'     => $this->getOwnerId(),
 			'online'       => $this->isOnline(),
-			'status'       => array_map(function (UserDeviceStatus $item): array {
+			'status'       => array_map(function (UserDeviceDataPointStatus $item): array {
 				return $item->toArray();
 			}, $this->getStatus()),
 			'active_time'  => $this->getActiveTime(),

@@ -377,7 +377,7 @@ final class OpenApi
 				) {
 					foreach ($result->offsetGet('status') as $item) {
 						$deviceStatus[] = $this->entityFactory->build(
-							Entities\API\UserDeviceStatus::class,
+							Entities\API\UserDeviceDataPointStatus::class,
 							$item
 						);
 					}
@@ -518,7 +518,7 @@ final class OpenApi
 					}
 
 					$statuses[] = $this->entityFactory->build(
-						Entities\API\UserDeviceStatus::class,
+						Entities\API\UserDeviceDataPointStatus::class,
 						$statusData
 					);
 				}
@@ -806,7 +806,7 @@ final class OpenApi
 					}
 
 					$statuses[] = $this->entityFactory->build(
-						Entities\API\DeviceStatus::class,
+						Entities\API\DeviceDataPointStatus::class,
 						$statusData
 					);
 				}

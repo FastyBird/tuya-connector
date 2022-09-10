@@ -57,7 +57,7 @@ final class Discovery
 	/** @var string[] */
 	private array $processedProtocols = [];
 
-	/** @var SplObjectStorage<Entities\Messages\DiscoveredLocalDevice, null> */
+	/** @var SplObjectStorage<Entities\API\DiscoveredLocalDevice, null> */
 	private SplObjectStorage $discoveredLocalDevices;
 
 	/** @var EventLoop\TimerInterface|null */
@@ -378,14 +378,12 @@ final class Discovery
 				return;
 			}
 
-			$this->discoveredLocalDevices->attach(new Entities\Messages\DiscoveredLocalDevice(
-				$this->connector->getId(),
+			$this->discoveredLocalDevices->attach(new Entities\API\DiscoveredLocalDevice(
 				strval($deviceInfo->offsetGet('gwId')),
 				strval($deviceInfo->offsetGet('ip')),
 				strval($deviceInfo->offsetGet('productKey')),
 				boolval($deviceInfo->offsetGet('encrypt')),
 				strval($deviceInfo->offsetGet('version')),
-				Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_DISCOVERY)
 			));
 
 		} catch (Utils\JsonException $ex) {
@@ -406,7 +404,7 @@ final class Discovery
 	}
 
 	/**
-	 * @param Entities\Messages\DiscoveredLocalDevice[] $devices
+	 * @param Entities\API\DiscoveredLocalDevice[] $devices
 	 *
 	 * @return void
 	 */
@@ -414,10 +412,33 @@ final class Discovery
 		array $devices,
 	): void {
 		foreach ($devices as $device) {
+			$dataPoints = [];
+
+			$this->openApiApi = $this->openApiApiFactory->create($this->connector);
+
+			try {
+				/** @var Entities\API\DeviceInformation $deviceInformation */
+				$deviceInformation = await($this->openApiApi->getDeviceInformation($device->getId()));
+			} catch (Throwable $ex) {
+				$this->logger->error(
+					'Could not load device basic information from Tuya cloud',
+					[
+						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'      => 'discovery-client',
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
+					]
+				);
+
+				continue;
+			}
+
 			$localApi = $this->localApiFactory->create(
 				$device->getId(),
-				$device->getId(),
-				'46664614c91aefae',
+				$deviceInformation->getGatewayId(),
+				$deviceInformation->getLocalKey(),
 				$device->getIpAddress(),
 				Types\DeviceProtocolVersion::get($device->getVersion())
 			);
@@ -442,7 +463,37 @@ final class Discovery
 
 			try {
 				if ($localApi->isConnected()) {
-					$deviceStates = await($localApi->readStates());
+					/** @var Entities\API\DeviceDataPointStatus[] $deviceStatuses */
+					$deviceStatuses = await($localApi->readStates());
+
+					$localApi->disconnect();
+
+					foreach ($deviceStatuses as $status) {
+						$dataType = Metadata\Types\DataTypeType::get(Metadata\Types\DataTypeType::DATA_TYPE_UNKNOWN);
+
+						if (is_bool($status->getValue())) {
+							$dataType = Metadata\Types\DataTypeType::get(Metadata\Types\DataTypeType::DATA_TYPE_BOOLEAN);
+						} elseif (is_numeric($status->getValue())) {
+							$dataType = Metadata\Types\DataTypeType::get(Metadata\Types\DataTypeType::DATA_TYPE_INT);
+						} elseif (is_string($status->getValue())) {
+							$dataType = Metadata\Types\DataTypeType::get(Metadata\Types\DataTypeType::DATA_TYPE_STRING);
+						}
+
+						$dataPoints[] = new Entities\Messages\DiscoveredLocalDataPoint(
+							$device->getId(),
+							$status->getCode(),
+							$status->getCode(),
+							$dataType,
+							null,
+							null,
+							null,
+							null,
+							null,
+							true,
+							true,
+							Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_DISCOVERY)
+						);
+					}
 				} else {
 					$this->logger->error(
 						'Could not connect to device',
@@ -453,7 +504,16 @@ final class Discovery
 					);
 				}
 
-				$this->consumer->append($device);
+				$this->consumer->append(new Entities\Messages\DiscoveredLocalDevice(
+					$this->connector->getId(),
+					$device->getId(),
+					$device->getIpAddress(),
+					$deviceInformation->getLocalKey(),
+					$device->isEncrypted(),
+					$device->getVersion(),
+					$dataPoints,
+					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_DISCOVERY)
+				));
 			} catch (Throwable $ex) {
 				$this->logger->error(
 					'Could not read device data points states',
