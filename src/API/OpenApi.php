@@ -224,15 +224,13 @@ final class OpenApi
 
 	/**
 	 * @param string $userId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDevices(
-		string $userId,
-		bool $async = true
+		string $userId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -242,10 +240,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId),
-			[],
-			null,
-			$async
+			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -289,15 +284,13 @@ final class OpenApi
 
 	/**
 	 * @param string[] $deviceIds
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDevicesFactoryInfos(
-		array $deviceIds,
-		bool $async = true
+		array $deviceIds
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -310,9 +303,7 @@ final class OpenApi
 			self::USER_DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			],
-			null,
-			$async
+			]
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -356,15 +347,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceDetail(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -374,10 +363,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -430,15 +416,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceSpecifications(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -448,10 +432,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -523,15 +504,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceStatus(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -541,10 +520,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -588,15 +564,13 @@ final class OpenApi
 
 	/**
 	 * @param Array<string, mixed> $params
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getDevices(
-		array $params = [],
-		bool $async = true
+		array $params = []
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -607,9 +581,7 @@ final class OpenApi
 		$result = $this->callRequest(
 			'GET',
 			self::DEVICES_API_ENDPOINT,
-			$params,
-			null,
-			$async
+			$params
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -659,15 +631,13 @@ final class OpenApi
 
 	/**
 	 * @param string[] $deviceIds
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getDevicesFactoryInfos(
-		array $deviceIds,
-		bool $async = true
+		array $deviceIds
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -680,9 +650,7 @@ final class OpenApi
 			self::DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			],
-			null,
-			$async
+			]
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -726,15 +694,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceInformation(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -744,10 +710,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -781,15 +744,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceSpecification(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -799,10 +760,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -874,15 +832,13 @@ final class OpenApi
 
 	/**
 	 * @param string $deviceId
-	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceStatus(
-		string $deviceId,
-		bool $async = true
+		string $deviceId
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
 			$this->connect();
@@ -892,10 +848,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId),
-			[],
-			null,
-			$async
+			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId)
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {

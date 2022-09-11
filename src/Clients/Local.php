@@ -25,6 +25,7 @@ use FastyBird\Metadata\Types as MetadataTypes;
 use FastyBird\TuyaConnector\API;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Nette;
@@ -50,6 +51,8 @@ final class Local implements Client
 	private const HANDLER_PROCESSING_INTERVAL = 0.01;
 
 	private const SENDING_COMMAND_DELAY = 120;
+
+	private const RECONNECT_COOL_DOWN_TIME = 300;
 
 	private const CMD_STATUS = 'status';
 
@@ -161,59 +164,7 @@ final class Local implements Client
 		$this->processedProperties = [];
 
 		foreach ($this->devicesRepository->findAllByConnector($this->connector->getId()) as $deviceItem) {
-			$client = $this->localApiFactory->create(
-				$deviceItem->getIdentifier(),
-				null,
-				strval($this->deviceHelper->getConfiguration(
-					$deviceItem->getId(),
-					Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY)
-				)),
-				strval($this->deviceHelper->getConfiguration(
-					$deviceItem->getId(),
-					Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
-				)),
-				Types\DeviceProtocolVersion::get(strval($this->deviceHelper->getConfiguration(
-					$deviceItem->getId(),
-					Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION)
-				))),
-			);
-
-			$this->devicesClients[$deviceItem->getId()->toString()] = $client;
-
-			$client->on('message', function (Entities\API\Entity $message): void {
-				var_dump('RECEIVED');
-				var_dump($message->toArray());
-			});
-
-			$client->connect()
-				->then(function () use ($deviceItem): void {
-					$this->logger->debug(
-						'Connected to device',
-						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'local-client',
-							'device'    => [
-								'id' => $deviceItem->getId()->toString(),
-							],
-						]
-					);
-				})
-				->otherwise(function (Throwable $ex) use ($deviceItem): void {
-					$this->logger->error(
-						'Could not establish connection with device via local protocol',
-						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'local-client',
-							'device'    => [
-								'id' => $deviceItem->getId()->toString(),
-							],
-							'exception' => [
-								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
-							],
-						]
-					);
-				});
+			$this->createDeviceClient($deviceItem);
 		}
 
 		$this->eventLoop->addTimer(
@@ -300,17 +251,36 @@ final class Local implements Client
 	 */
 	private function processDevice(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
 	{
-		if ($this->readDeviceData(self::CMD_STATUS, $deviceItem)) {
+		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
+			$this->createDeviceClient($deviceItem);
+
+			return true;
+		}
+
+		if (!$this->devicesClients[$deviceItem->getId()->toString()]->isConnected()) {
+			if (!$this->devicesClients[$deviceItem->getId()->toString()]->isConnecting()) {
+				if (
+					$this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat() === null
+					|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat()->getTimestamp()) >= self::RECONNECT_COOL_DOWN_TIME
+				) {
+					$this->devicesClients[$deviceItem->getId()->toString()]->connect();
+				}
+			}
+
 			return true;
 		}
 
 		if (
-			$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
+			!$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
 		) {
-			return $this->writeChannelsProperty($deviceItem);
+			return true;
 		}
 
-		return true;
+		if ($this->readDeviceData(self::CMD_STATUS, $deviceItem)) {
+			return true;
+		}
+
+		return $this->writeChannelsProperty($deviceItem);
 	}
 
 	/**
@@ -326,7 +296,7 @@ final class Local implements Client
 		MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
 	): bool {
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
-			return false;
+			throw new Exceptions\InvalidState('Device client is not created');
 		}
 
 		$cmdResult = null;
@@ -374,8 +344,8 @@ final class Local implements Client
 						$dataPointsStatuses
 					));
 				})
-				->otherwise(function (Throwable $ex): void {
-					$this->logger->error(
+				->otherwise(function (Throwable $ex) use ($deviceItem): void {
+					$this->logger->warning(
 						'Could not call local api',
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
@@ -390,11 +360,12 @@ final class Local implements Client
 						]
 					);
 
-					throw new DevicesModuleExceptions\TerminateException(
-						'Could not call local api',
-						$ex->getCode(),
-						$ex
-					);
+					$this->consumer->append(new Entities\Messages\DeviceState(
+						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+						$this->connector->getId(),
+						$deviceItem->getIdentifier(),
+						true
+					));
 				});
 		}
 
@@ -412,7 +383,7 @@ final class Local implements Client
 	private function writeChannelsProperty(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
 	{
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
-			return false;
+			throw new Exceptions\InvalidState('Device client is not created');
 		}
 
 		$now = $this->dateTimeFactory->getNow();
@@ -497,6 +468,83 @@ final class Local implements Client
 		}
 
 		return false;
+	}
+
+	/**
+	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
+	 *
+	 * @return void
+	 */
+	private function createDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): void
+	{
+		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
+
+		$this->devicesClients[$deviceItem->getId()->toString()] = $this->localApiFactory->create(
+			$deviceItem->getIdentifier(),
+			null,
+			strval($this->deviceHelper->getConfiguration(
+				$deviceItem->getId(),
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY)
+			)),
+			strval($this->deviceHelper->getConfiguration(
+				$deviceItem->getId(),
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
+			)),
+			Types\DeviceProtocolVersion::get(strval($this->deviceHelper->getConfiguration(
+				$deviceItem->getId(),
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION)
+			))),
+		);
+
+		$this->devicesClients[$deviceItem->getId()->toString()]->on('message', function (Entities\API\Entity $message): void {
+			var_dump('RECEIVED');
+			var_dump($message->toArray());
+		});
+
+		$this->devicesClients[$deviceItem->getId()->toString()]
+			->connect()
+			->then(function () use ($deviceItem): void {
+				$this->logger->debug(
+					'Connected to device',
+					[
+						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'      => 'local-client',
+						'device'    => [
+							'id' => $deviceItem->getId()->toString(),
+						],
+					]
+				);
+
+				$this->consumer->append(new Entities\Messages\DeviceState(
+					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+					$this->connector->getId(),
+					$deviceItem->getIdentifier(),
+					true
+				));
+			})
+			->otherwise(function (Throwable $ex) use ($deviceItem): void {
+				$this->logger->warning(
+					'Could not establish connection with device via local protocol',
+					[
+						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'      => 'local-client',
+						'device'    => [
+							'id' => $deviceItem->getId()->toString(),
+						],
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
+					]
+				);
+
+				$this->consumer->append(new Entities\Messages\DeviceState(
+					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+					$this->connector->getId(),
+					$deviceItem->getIdentifier(),
+					false
+				));
+			});
 	}
 
 	/**

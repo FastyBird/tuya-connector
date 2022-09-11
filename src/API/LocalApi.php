@@ -73,6 +73,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/** @var int */
 	private int $sequenceNr = 0;
 
+	/** @var bool */
+	private bool $connecting = false;
+
 	/** @var DateTimeInterface|null */
 	private ?DateTimeInterface $lastHeartbeat = null;
 
@@ -149,6 +152,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->heartBeatTimer = null;
 		$this->lastHeartbeat = null;
 
+		$this->connecting = true;
+
 		$deferred = new Promise\Deferred();
 
 		try {
@@ -156,14 +161,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 			$connector->connect($this->ipAddress . ':' . self::SOCKET_PORT)
 				->then(function (Socket\ConnectionInterface $connection) use ($deferred): void {
+					$this->connecting = false;
+
 					$this->connection = $connection;
 
 					$this->connection->on('data', function ($chunk) {
 						$message = $this->decodePayload($chunk);
 
 						if ($message !== null) {
-							var_dump($message->toArray());
-
 							if (array_key_exists($message->getSequence(), $this->messagesListeners)) {
 								$this->messagesListeners[$message->getSequence()]->resolve($message->getData());
 
@@ -264,9 +269,13 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					$deferred->resolve();
 				})
 				->otherwise(function (Throwable $ex) use ($deferred): void {
+					$this->connecting = false;
+
 					$deferred->reject($ex);
 				});
 		} catch (Throwable $ex) {
+			$this->connecting = false;
+
 			$this->logger->error(
 				'Could not create connector',
 				[
@@ -311,6 +320,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/**
 	 * @return bool
 	 */
+	public function isConnecting(): bool
+	{
+		return $this->connecting;
+	}
+
+	/**
+	 * @return bool
+	 */
 	public function isConnected(): bool
 	{
 		return $this->connection !== null
@@ -318,6 +335,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$this->lastHeartbeat === null
 				|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) < self::HEARTBEAT_TIMEOUT
 			);
+	}
+
+	/**
+	 * @return DateTimeInterface|null
+	 */
+	public function getLastHeartbeat(): ?DateTimeInterface
+	{
+		return $this->lastHeartbeat;
 	}
 
 	/**
