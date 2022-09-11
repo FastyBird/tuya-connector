@@ -22,7 +22,6 @@ use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
-use React\EventLoop;
 
 /**
  * OpenAPI API factory
@@ -47,9 +46,6 @@ final class OpenApiFactory
 	/** @var DateTimeFactory\DateTimeFactory */
 	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
 
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
 	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
@@ -58,7 +54,6 @@ final class OpenApiFactory
 	 * @param Helpers\Connector $connectorHelper
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
@@ -66,14 +61,12 @@ final class OpenApiFactory
 		Helpers\Connector $connectorHelper,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
 		?Log\LoggerInterface $logger = null
 	) {
 		$this->entityFactory = $entityFactory;
 		$this->connectorHelper = $connectorHelper;
 		$this->schemaValidator = $schemaValidator;
 		$this->dateTimeFactory = $dateTimeFactory;
-		$this->eventLoop = $eventLoop;
 
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
@@ -112,7 +105,6 @@ final class OpenApiFactory
 			$this->entityFactory,
 			$this->schemaValidator,
 			$this->dateTimeFactory,
-			$this->eventLoop,
 			$this->logger
 		);
 	}

@@ -22,13 +22,11 @@ use FastyBird\TuyaConnector;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Types;
+use GuzzleHttp;
 use Nette;
 use Nette\Utils;
 use Psr\Http\Message;
 use Psr\Log;
-use React\Async;
-use React\EventLoop;
-use React\Http;
 use React\Promise;
 use Throwable;
 
@@ -108,11 +106,8 @@ final class OpenApi
 	/** @var DateTimeFactory\DateTimeFactory */
 	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
 
-	/** @var Http\Browser|null */
-	private ?Http\Browser $browser = null;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
+	/** @var GuzzleHttp\Client|null */
+	private ?GuzzleHttp\Client $client = null;
 
 	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
@@ -125,7 +120,6 @@ final class OpenApi
 	 * @param EntityFactory $entityFactory
 	 * @param MetadataSchemas\IValidator $schemaValidator
 	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
@@ -136,7 +130,6 @@ final class OpenApi
 		EntityFactory $entityFactory,
 		MetadataSchemas\IValidator $schemaValidator,
 		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
 		?Log\LoggerInterface $logger = null
 	) {
 		$this->accessId = $accessId;
@@ -147,47 +140,51 @@ final class OpenApi
 		$this->entityFactory = $entityFactory;
 		$this->schemaValidator = $schemaValidator;
 		$this->dateTimeFactory = $dateTimeFactory;
-		$this->eventLoop = $eventLoop;
 
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
 	/**
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 * @return void
 	 *
 	 * @throws Throwable
 	 */
-	public function connect(): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	public function connect(): void
 	{
-		return $this->callRequest(
+		$response = $this->callRequest(
 			'GET',
 			self::ACCESS_TOKEN_API_ENDPOINT,
 			[
 				'grant_type' => 1,
-			]
-		)
-			->then(function (Message\ResponseInterface $response): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::ACCESS_TOKEN_MESSAGE_SCHEMA_FILENAME)
-				);
+			],
+			null,
+			false
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if (!$response instanceof Message\ResponseInterface) {
+			throw new Exceptions\InvalidState('Calling get access token returned invalid response');
+		}
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+		$parsedMessage = $this->schemaValidator->validate(
+			$response->getBody()->getContents(),
+			$this->getSchemaFilePath(self::ACCESS_TOKEN_MESSAGE_SCHEMA_FILENAME)
+		);
 
-				$result->offsetSet(
-					'expire_time',
-					intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
-				);
+		$result = $parsedMessage->offsetGet('result');
 
-				$this->tokenInfo = $this->entityFactory->build(
-					Entities\API\TuyaTokenInfo::class,
-					$result
-				);
-			});
+		if (!$result instanceof Utils\ArrayHash) {
+			throw new Exceptions\OpenApiCall('Received response is not valid');
+		}
+
+		$result->offsetSet(
+			'expire_time',
+			intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
+		);
+
+		$this->tokenInfo = $this->entityFactory->build(
+			Entities\API\TuyaTokenInfo::class,
+			$result
+		);
 	}
 
 	/**
@@ -195,7 +192,7 @@ final class OpenApi
 	 */
 	public function disconnect(): void
 	{
-		$this->browser = null;
+		$this->client = null;
 		$this->tokenInfo = null;
 	}
 
@@ -215,7 +212,7 @@ final class OpenApi
 	public function getUid(): string
 	{
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		if ($this->tokenInfo === null) {
@@ -227,595 +224,715 @@ final class OpenApi
 
 	/**
 	 * @param string $userId
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
-	public function getUserDevices(string $userId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getUserDevices(
+		string $userId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::USER_DEVICES_MESSAGE_SCHEMA_FILENAME)
-				);
+			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId),
+			[],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::USER_DEVICES_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$devices = [];
-
-				foreach ($result as $deviceData) {
-					if (!$deviceData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$devices[] = $this->entityFactory->build(
-						Entities\API\UserDeviceDetail::class,
-						$deviceData
-					);
-				}
+					$devices = [];
 
-				$promise->resolve($devices);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					foreach ($result as $deviceData) {
+						if (!$deviceData instanceof Utils\ArrayHash) {
+							continue;
+						}
+
+						$devices[] = $this->entityFactory->build(
+							Entities\API\UserDeviceDetail::class,
+							$deviceData
+						);
+					}
+
+					$promise->resolve($devices);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string[] $deviceIds
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDevicesFactoryInfos(
-		array $deviceIds
+		array $deviceIds,
+		bool $async = true
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
 			self::USER_DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			]
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::USER_DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
-				);
+			],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::USER_DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$factoryInfos = [];
-
-				foreach ($result as $deviceData) {
-					if (!$deviceData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$factoryInfos[] = $this->entityFactory->build(
-						Entities\API\UserDeviceFactoryInfos::class,
-						$deviceData
-					);
-				}
+					$factoryInfos = [];
 
-				$promise->resolve($factoryInfos);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					foreach ($result as $deviceData) {
+						if (!$deviceData instanceof Utils\ArrayHash) {
+							continue;
+						}
+
+						$factoryInfos[] = $this->entityFactory->build(
+							Entities\API\UserDeviceFactoryInfos::class,
+							$deviceData
+						);
+					}
+
+					$promise->resolve($factoryInfos);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string $deviceId
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
-	public function getUserDeviceDetail(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getUserDeviceDetail(
+		string $deviceId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::USER_DEVICE_DETAIL_MESSAGE_SCHEMA_FILENAME)
-				);
+			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::USER_DEVICE_DETAIL_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$deviceStatus = [];
-
-				if (
-					$result->offsetExists('status')
-					&& (
-						is_array($result->offsetGet('status'))
-						|| $result->offsetGet('status') instanceof Utils\ArrayHash
-					)
-				) {
-					foreach ($result->offsetGet('status') as $item) {
-						$deviceStatus[] = $this->entityFactory->build(
-							Entities\API\UserDeviceDataPointStatus::class,
-							$item
-						);
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
-				}
 
-				$result->offsetSet('status', $deviceStatus);
+					$deviceStatus = [];
 
-				$promise->resolve($this->entityFactory->build(
-					Entities\API\UserDeviceDetail::class,
-					$result
-				));
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					if (
+						$result->offsetExists('status')
+						&& (
+							is_array($result->offsetGet('status'))
+							|| $result->offsetGet('status') instanceof Utils\ArrayHash
+						)
+					) {
+						foreach ($result->offsetGet('status') as $item) {
+							$deviceStatus[] = $this->entityFactory->build(
+								Entities\API\UserDeviceDataPointStatus::class,
+								$item
+							);
+						}
+					}
+
+					$result->offsetSet('status', $deviceStatus);
+
+					$promise->resolve($this->entityFactory->build(
+						Entities\API\UserDeviceDetail::class,
+						$result
+					));
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string $deviceId
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceSpecifications(
-		string $deviceId
+		string $deviceId,
+		bool $async = true
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::USER_DEVICE_SPECIFICATIONS_MESSAGE_SCHEMA_FILENAME)
-				);
+			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::USER_DEVICE_SPECIFICATIONS_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$deviceFunctions = [];
-
-				if (
-					$result->offsetExists('functions')
-					&& (
-						is_array($result->offsetGet('functions'))
-						|| $result->offsetGet('functions') instanceof Utils\ArrayHash
-					)
-				) {
-					foreach ($result->offsetGet('functions') as $item) {
-						$deviceFunctions[] = $this->entityFactory->build(
-							Entities\API\UserDeviceSpecificationsFunction::class,
-							$item
-						);
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
-				}
 
-				$result->offsetSet('functions', $deviceFunctions);
+					$deviceFunctions = [];
 
-				$deviceStatus = [];
-
-				if (
-					$result->offsetExists('status')
-					&& (
-						is_array($result->offsetGet('status'))
-						|| $result->offsetGet('status') instanceof Utils\ArrayHash
-					)
-				) {
-					foreach ($result->offsetGet('status') as $item) {
-						$deviceStatus[] = $this->entityFactory->build(
-							Entities\API\UserDeviceSpecificationsStatus::class,
-							$item
-						);
+					if (
+						$result->offsetExists('functions')
+						&& (
+							is_array($result->offsetGet('functions'))
+							|| $result->offsetGet('functions') instanceof Utils\ArrayHash
+						)
+					) {
+						foreach ($result->offsetGet('functions') as $item) {
+							$deviceFunctions[] = $this->entityFactory->build(
+								Entities\API\UserDeviceSpecificationsFunction::class,
+								$item
+							);
+						}
 					}
-				}
 
-				$result->offsetSet('status', $deviceStatus);
+					$result->offsetSet('functions', $deviceFunctions);
 
-				$promise->resolve($this->entityFactory->build(
-					Entities\API\UserDeviceSpecifications::class,
-					$result
-				));
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					$deviceStatus = [];
+
+					if (
+						$result->offsetExists('status')
+						&& (
+							is_array($result->offsetGet('status'))
+							|| $result->offsetGet('status') instanceof Utils\ArrayHash
+						)
+					) {
+						foreach ($result->offsetGet('status') as $item) {
+							$deviceStatus[] = $this->entityFactory->build(
+								Entities\API\UserDeviceSpecificationsStatus::class,
+								$item
+							);
+						}
+					}
+
+					$result->offsetSet('status', $deviceStatus);
+
+					$promise->resolve($this->entityFactory->build(
+						Entities\API\UserDeviceSpecifications::class,
+						$result
+					));
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string $deviceId
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
-	public function getUserDeviceStatus(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getUserDeviceStatus(
+		string $deviceId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::USER_DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
-				);
+			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::USER_DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$statuses = [];
-
-				foreach ($result as $statusData) {
-					if (!$statusData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$statuses[] = $this->entityFactory->build(
-						Entities\API\UserDeviceDataPointStatus::class,
-						$statusData
-					);
-				}
+					$statuses = [];
 
-				$promise->resolve($statuses);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					foreach ($result as $statusData) {
+						if (!$statusData instanceof Utils\ArrayHash) {
+							continue;
+						}
+
+						$statuses[] = $this->entityFactory->build(
+							Entities\API\UserDeviceDataPointStatus::class,
+							$statusData
+						);
+					}
+
+					$promise->resolve($statuses);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param Array<string, mixed> $params
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 *
 	 * @throws Throwable
 	 */
-	public function getDevices(array $params = []): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getDevices(
+		array $params = [],
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest('GET', self::DEVICES_API_ENDPOINT, $params)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICES_MESSAGE_SCHEMA_FILENAME)
-				);
+		$result = $this->callRequest(
+			'GET',
+			self::DEVICES_API_ENDPOINT,
+			$params,
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICES_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$list = $result->offsetGet('list');
-
-				if (!$list instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
-
-				$devices = [];
-
-				foreach ($list as $deviceData) {
-					if (!$deviceData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$devices[] = $this->entityFactory->build(
-						Entities\API\DeviceInformation::class,
-						$deviceData
-					);
-				}
+					$list = $result->offsetGet('list');
 
-				$promise->resolve($devices);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					if (!$list instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
+					}
+
+					$devices = [];
+
+					foreach ($list as $deviceData) {
+						if (!$deviceData instanceof Utils\ArrayHash) {
+							continue;
+						}
+
+						$devices[] = $this->entityFactory->build(
+							Entities\API\DeviceInformation::class,
+							$deviceData
+						);
+					}
+
+					$promise->resolve($devices);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string[] $deviceIds
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
-	public function getDevicesFactoryInfos(array $deviceIds): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getDevicesFactoryInfos(
+		array $deviceIds,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
 			self::DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			]
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
-				);
+			],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$factoryInfos = [];
-
-				foreach ($result as $deviceData) {
-					if (!$deviceData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$factoryInfos[] = $this->entityFactory->build(
-						Entities\API\DeviceFactoryInfos::class,
-						$deviceData
-					);
-				}
+					$factoryInfos = [];
 
-				$promise->resolve($factoryInfos);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					foreach ($result as $deviceData) {
+						if (!$deviceData instanceof Utils\ArrayHash) {
+							continue;
+						}
 
-		return $promise->promise();
-	}
-
-	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
-	 * @throws Throwable
-	 */
-	public function getDeviceInformation(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
-		if (!$this->isConnected()) {
-			Async\await($this->connect());
-		}
-
-		$promise = new Promise\Deferred();
-
-		$this->callRequest(
-			'GET',
-			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICE_INFORMATION_MESSAGE_SCHEMA_FILENAME)
-				);
-
-				$result = $parsedMessage->offsetGet('result');
-
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
-
-				$promise->resolve($this->entityFactory->build(
-					Entities\API\DeviceInformation::class,
-					$result
-				));
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
-
-		return $promise->promise();
-	}
-
-	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
-	 * @throws Throwable
-	 */
-	public function getDeviceSpecification(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
-		if (!$this->isConnected()) {
-			Async\await($this->connect());
-		}
-
-		$promise = new Promise\Deferred();
-
-		$this->callRequest(
-			'GET',
-			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICE_SPECIFICATION_MESSAGE_SCHEMA_FILENAME)
-				);
-
-				$result = $parsedMessage->offsetGet('result');
-
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
-
-				$deviceFunctions = [];
-
-				if (
-					$result->offsetExists('functions')
-					&& (
-						is_array($result->offsetGet('functions'))
-						|| $result->offsetGet('functions') instanceof Utils\ArrayHash
-					)
-				) {
-					foreach ($result->offsetGet('functions') as $item) {
-						$deviceFunctions[] = $this->entityFactory->build(
-							Entities\API\DeviceSpecificationFunction::class,
-							$item
+						$factoryInfos[] = $this->entityFactory->build(
+							Entities\API\DeviceFactoryInfos::class,
+							$deviceData
 						);
 					}
-				}
 
-				$result->offsetSet('functions', $deviceFunctions);
-
-				$deviceStatus = [];
-
-				if (
-					$result->offsetExists('status')
-					&& (
-						is_array($result->offsetGet('status'))
-						|| $result->offsetGet('status') instanceof Utils\ArrayHash
-					)
-				) {
-					foreach ($result->offsetGet('status') as $item) {
-						$deviceStatus[] = $this->entityFactory->build(
-							Entities\API\DeviceSpecificationStatus::class,
-							$item
-						);
-					}
-				}
-
-				$result->offsetSet('status', $deviceStatus);
-
-				$promise->resolve($this->entityFactory->build(
-					Entities\API\DeviceSpecification::class,
-					$result
-				));
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+					$promise->resolve($factoryInfos);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
 
 	/**
 	 * @param string $deviceId
+	 * @param bool $async
 	 *
 	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
 	 *
 	 * @throws Throwable
 	 */
-	public function getDeviceStatus(string $deviceId): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	{
+	public function getDeviceInformation(
+		string $deviceId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId)
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
-				);
+			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
 
-				$result = $parsedMessage->offsetGet('result');
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICE_INFORMATION_MESSAGE_SCHEMA_FILENAME)
+					);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+					$result = $parsedMessage->offsetGet('result');
 
-				$statuses = [];
-
-				foreach ($result as $statusData) {
-					if (!$statusData instanceof Utils\ArrayHash) {
-						continue;
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
 					}
 
-					$statuses[] = $this->entityFactory->build(
-						Entities\API\DeviceDataPointStatus::class,
-						$statusData
-					);
-				}
+					$promise->resolve($this->entityFactory->build(
+						Entities\API\DeviceInformation::class,
+						$result
+					));
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
-				$promise->resolve($statuses);
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+		return $promise->promise();
+	}
+
+	/**
+	 * @param string $deviceId
+	 * @param bool $async
+	 *
+	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 *
+	 * @throws Throwable
+	 */
+	public function getDeviceSpecification(
+		string $deviceId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		if (!$this->isConnected()) {
+			$this->connect();
+		}
+
+		$promise = new Promise\Deferred();
+
+		$result = $this->callRequest(
+			'GET',
+			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
+
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICE_SPECIFICATION_MESSAGE_SCHEMA_FILENAME)
+					);
+
+					$result = $parsedMessage->offsetGet('result');
+
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
+					}
+
+					$deviceFunctions = [];
+
+					if (
+						$result->offsetExists('functions')
+						&& (
+							is_array($result->offsetGet('functions'))
+							|| $result->offsetGet('functions') instanceof Utils\ArrayHash
+						)
+					) {
+						foreach ($result->offsetGet('functions') as $item) {
+							$deviceFunctions[] = $this->entityFactory->build(
+								Entities\API\DeviceSpecificationFunction::class,
+								$item
+							);
+						}
+					}
+
+					$result->offsetSet('functions', $deviceFunctions);
+
+					$deviceStatus = [];
+
+					if (
+						$result->offsetExists('status')
+						&& (
+							is_array($result->offsetGet('status'))
+							|| $result->offsetGet('status') instanceof Utils\ArrayHash
+						)
+					) {
+						foreach ($result->offsetGet('status') as $item) {
+							$deviceStatus[] = $this->entityFactory->build(
+								Entities\API\DeviceSpecificationStatus::class,
+								$item
+							);
+						}
+					}
+
+					$result->offsetSet('status', $deviceStatus);
+
+					$promise->resolve($this->entityFactory->build(
+						Entities\API\DeviceSpecification::class,
+						$result
+					));
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
+
+		return $promise->promise();
+	}
+
+	/**
+	 * @param string $deviceId
+	 * @param bool $async
+	 *
+	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 *
+	 * @throws Throwable
+	 */
+	public function getDeviceStatus(
+		string $deviceId,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		if (!$this->isConnected()) {
+			$this->connect();
+		}
+
+		$promise = new Promise\Deferred();
+
+		$result = $this->callRequest(
+			'GET',
+			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId),
+			[],
+			null,
+			$async
+		);
+
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
+					);
+
+					$result = $parsedMessage->offsetGet('result');
+
+					if (!$result instanceof Utils\ArrayHash) {
+						throw new Exceptions\OpenApiCall('Received response is not valid');
+					}
+
+					$statuses = [];
+
+					foreach ($result as $statusData) {
+						if (!$statusData instanceof Utils\ArrayHash) {
+							continue;
+						}
+
+						$statuses[] = $this->entityFactory->build(
+							Entities\API\DeviceDataPointStatus::class,
+							$statusData
+						);
+					}
+
+					$promise->resolve($statuses);
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
@@ -835,7 +952,7 @@ final class OpenApi
 		string|int|float|bool $value
 	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
 		if (!$this->isConnected()) {
-			Async\await($this->connect());
+			$this->connect();
 		}
 
 		$promise = new Promise\Deferred();
@@ -857,23 +974,29 @@ final class OpenApi
 			));
 		}
 
-		$this->callRequest(
+		$result = $this->callRequest(
 			'POST',
 			sprintf(self::DEVICE_SEND_COMMAND_API_ENDPOINT, $deviceId),
 			[],
 			$body
-		)
-			->then(function (Message\ResponseInterface $response) use ($promise): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::DEVICE_SEND_COMMAND_MESSAGE_SCHEMA_FILENAME)
-				);
+		);
 
-				$promise->resolve(boolval($parsedMessage->offsetGet('result')));
-			})
-			->otherwise(function (Throwable $ex) use ($promise): void {
-				$promise->reject($ex);
-			});
+		if ($result instanceof Promise\PromiseInterface) {
+			$result
+				->then(function (Message\ResponseInterface $response) use ($promise): void {
+					$parsedMessage = $this->schemaValidator->validate(
+						$response->getBody()->getContents(),
+						$this->getSchemaFilePath(self::DEVICE_SEND_COMMAND_MESSAGE_SCHEMA_FILENAME)
+					);
+
+					$promise->resolve(boolval($parsedMessage->offsetGet('result')));
+				})
+				->otherwise(function (Throwable $ex) use ($promise): void {
+					$promise->reject($ex);
+				});
+		} else {
+			throw new Exceptions\InvalidState('Request promise could not be created');
+		}
 
 		return $promise->promise();
 	}
@@ -883,8 +1006,9 @@ final class OpenApi
 	 * @param string $path
 	 * @param Array<string, mixed> $params
 	 * @param string|null $body
+	 * @param bool $async
 	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface|Message\ResponseInterface|false
 	 *
 	 * @throws Throwable
 	 */
@@ -892,9 +1016,10 @@ final class OpenApi
 		string $method,
 		string $path,
 		array $params = [],
-		?string $body = null
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
-		Async\await($this->refreshAccessToken($path));
+		?string $body = null,
+		bool $async = true
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface|Message\ResponseInterface|false {
+		$this->refreshAccessToken($path);
 
 		$deferred = new Promise\Deferred();
 
@@ -920,67 +1045,76 @@ final class OpenApi
 			$requestPath .= http_build_query($params);
 		}
 
-		$this->getBrowser()
-			->request(
+		if ($async) {
+			$this->getClient()->requestAsync(
 				$method,
 				$requestPath,
-				$this->buildRequestHeaders($method, $path, $params, $body),
-				$body ?? ''
+				[
+					'headers' => $this->buildRequestHeaders($method, $path, $params, $body),
+					'body'    => $body ?? '',
+				]
 			)
-			->then(function (Message\ResponseInterface $response) use ($deferred, $path): void {
-				$body = $response->getBody()->getContents();
+				->then(function (Message\ResponseInterface $response) use ($deferred, $method, $path, $params, $body): void {
+					try {
+						$response = $this->checkResponse($path, $response);
 
-				try {
-					$decodedResponse = Utils\Json::decode($body, Utils\Json::FORCE_ARRAY);
+					} catch (Exceptions\OpenApiCall $ex) {
+						$this->logger->error('Received payload is not valid', [
+							'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type'    => 'openapi-api',
+							'request' => [
+								'method' => $method,
+								'url'    => ($this->endpoint->getValue() . $path),
+								'params' => $params,
+								'body'   => $body,
+							],
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
+						]);
 
-				} catch (Utils\JsonException) {
-					$deferred->reject(new Exceptions\OpenApiCall('Received response body is not valid JSON'));
-
-					return;
-				}
-
-				if (!is_array($decodedResponse)) {
-					$deferred->reject(new Exceptions\OpenApiCall('Received response body is not valid JSON'));
-
-					return;
-				}
-
-				$data = Utils\ArrayHash::from($decodedResponse);
-
-				if (
-					$data->offsetExists('code')
-					&& $data->offsetGet('code') === self::TUYA_ERROR_CODE_TOKEN_INVALID
-				) {
-					$this->tokenInfo = null;
-
-					if ($path !== self::ACCESS_TOKEN_API_ENDPOINT) {
-						Async\await($this->connect());
-
-					} else {
-						$deferred->reject(new Exceptions\OpenApiCall('API token is not valid and can not be refreshed'));
+						$deferred->reject($ex);
 
 						return;
 					}
-				}
 
-				if (
-					$data->offsetExists('success')
-					&& boolval($data->offsetGet('success')) !== true
-				) {
-					if ($data->offsetExists('msg')) {
-						$deferred->reject(new Exceptions\OpenApiCall(strval($data->offsetGet('msg'))));
-					} else {
-						$deferred->reject(new Exceptions\OpenApiCall('Received response is not success'));
-					}
+					$deferred->resolve($response);
+				})
+				->otherwise(function (Throwable $ex) use ($deferred, $method, $path, $params, $body): void {
+					$this->logger->error('Calling api endpoint failed', [
+						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'    => 'openapi-api',
+						'request' => [
+							'method' => $method,
+							'url'    => ($this->endpoint->getValue() . $path),
+							'params' => $params,
+							'body'   => $body,
+						],
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
+					]);
 
-					return;
-				}
+					$deferred->reject($ex);
+				});
 
-				$response->getBody()->rewind();
+			return $deferred->promise();
+		} else {
+			try {
+				$response = $this->getClient()->request(
+					$method,
+					$requestPath,
+					[
+						'headers' => $this->buildRequestHeaders($method, $path, $params, $body),
+						'body'    => $body ?? '',
+					]
+				);
 
-				$deferred->resolve($response);
-			})
-			->otherwise(function (Throwable $ex) use ($deferred, $method, $path, $params, $body): void {
+				$response = $this->checkResponse($path, $response);
+
+			} catch (GuzzleHttp\Exception\GuzzleException $ex) {
 				$this->logger->error('Calling api endpoint failed', [
 					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'    => 'openapi-api',
@@ -990,73 +1124,155 @@ final class OpenApi
 						'params' => $params,
 						'body'   => $body,
 					],
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
 				]);
 
-				$deferred->reject($ex);
-			});
+				return false;
 
-		return $deferred->promise();
+			} catch (Exceptions\OpenApiCall $ex) {
+				$this->logger->error('Received payload is not valid', [
+					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'    => 'openapi-api',
+					'request' => [
+						'method' => $method,
+						'url'    => ($this->endpoint->getValue() . $path),
+						'params' => $params,
+						'body'   => $body,
+					],
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
+				]);
+
+				return false;
+			}
+
+			return $response;
+		}
+	}
+
+	/**
+	 * @param string $path
+	 * @param Message\ResponseInterface $response
+	 *
+	 * @return Message\ResponseInterface
+	 *
+	 * @throws Throwable
+	 */
+	private function checkResponse(string $path, Message\ResponseInterface $response): Message\ResponseInterface
+	{
+		$body = $response->getBody()->getContents();
+
+		try {
+			$decodedResponse = Utils\Json::decode($body, Utils\Json::FORCE_ARRAY);
+
+		} catch (Utils\JsonException) {
+			throw new Exceptions\OpenApiCall('Received response body is not valid JSON');
+		}
+
+		if (!is_array($decodedResponse)) {
+			throw new Exceptions\OpenApiCall('Received response body is not valid JSON');
+		}
+
+		$data = Utils\ArrayHash::from($decodedResponse);
+
+		if (
+			$data->offsetExists('code')
+			&& $data->offsetGet('code') === self::TUYA_ERROR_CODE_TOKEN_INVALID
+		) {
+			$this->tokenInfo = null;
+
+			if ($path !== self::ACCESS_TOKEN_API_ENDPOINT) {
+				$this->connect();
+
+			} else {
+				throw new Exceptions\OpenApiCall('API token is not valid and can not be refreshed');
+			}
+		}
+
+		if (
+			$data->offsetExists('success')
+			&& boolval($data->offsetGet('success')) !== true
+		) {
+			if ($data->offsetExists('msg')) {
+				throw new Exceptions\OpenApiCall(strval($data->offsetGet('msg')));
+			}
+
+			throw new Exceptions\OpenApiCall('Received response is not success');
+		}
+
+		$response->getBody()->rewind();
+
+		return $response;
 	}
 
 	/**
 	 * @param string $path
 	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 * @return void
 	 */
-	private function refreshAccessToken(string $path): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	private function refreshAccessToken(string $path): void
 	{
-		$deferred = new Promise\Deferred();
-
 		if (Utils\Strings::startsWith($path, self::ACCESS_TOKEN_API_ENDPOINT)) {
-			return Promise\resolve();
+			return;
 		}
 
 		if ($this->tokenInfo === null) {
-			return Promise\resolve();
+			return;
 		}
 
 		$tokenExpireTime = $this->tokenInfo->getExpireTime();
 
 		if (($tokenExpireTime - 60 * 1000) > intval($this->dateTimeFactory->getNow()->format('Uv'))) { // 1min
-			return Promise\resolve();
+			return;
 		}
 
-		$this->getBrowser()->get(
-			$this->endpoint->getValue() . sprintf(
-				self::REFRESH_TOKEN_API_ENDPOINT,
-				$this->tokenInfo->getRefreshToken()
-			),
-			$this->buildRequestHeaders('get', self::REFRESH_TOKEN_API_ENDPOINT),
-		)
-			->then(function (Message\ResponseInterface $response) use ($deferred): void {
-				$parsedMessage = $this->schemaValidator->validate(
-					$response->getBody()->getContents(),
-					$this->getSchemaFilePath(self::REFRESH_TOKEN_MESSAGE_SCHEMA_FILENAME)
-				);
+		try {
+			$response = $this->getClient()->get(
+				$this->endpoint->getValue() . sprintf(
+					self::REFRESH_TOKEN_API_ENDPOINT,
+					$this->tokenInfo->getRefreshToken()
+				),
+				$this->buildRequestHeaders('get', self::REFRESH_TOKEN_API_ENDPOINT),
+			);
 
-				$result = $parsedMessage->offsetGet('result');
+			$parsedMessage = $this->schemaValidator->validate(
+				$response->getBody()->getContents(),
+				$this->getSchemaFilePath(self::REFRESH_TOKEN_MESSAGE_SCHEMA_FILENAME)
+			);
 
-				if (!$result instanceof Utils\ArrayHash) {
-					throw new Exceptions\OpenApiCall('Received response is not valid');
-				}
+			$result = $parsedMessage->offsetGet('result');
 
-				$result->offsetSet(
-					'expire_time',
-					intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
-				);
+			if (!$result instanceof Utils\ArrayHash) {
+				throw new Exceptions\OpenApiCall('Received response is not valid');
+			}
 
-				$this->tokenInfo = $this->entityFactory->build(
-					Entities\API\TuyaTokenInfo::class,
-					$result
-				);
+			$result->offsetSet(
+				'expire_time',
+				intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
+			);
 
-				$deferred->resolve();
-			})
-			->otherwise(function (Throwable $ex) use ($deferred): void {
-				$deferred->reject($ex);
-			});
-
-		return $deferred->promise();
+			$this->tokenInfo = $this->entityFactory->build(
+				Entities\API\TuyaTokenInfo::class,
+				$result
+			);
+		} catch (GuzzleHttp\Exception\GuzzleException $ex) {
+			$this->logger->error(
+				'Could not refresh access token',
+				[
+					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type'    => 'openapi-api',
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
+				]
+			);
+		}
 	}
 
 	/**
@@ -1141,15 +1357,15 @@ final class OpenApi
 	}
 
 	/**
-	 * @return Http\Browser
+	 * @return GuzzleHttp\Client
 	 */
-	private function getBrowser(): Http\Browser
+	private function getClient(): GuzzleHttp\Client
 	{
-		if ($this->browser === null) {
-			$this->browser = new Http\Browser($this->eventLoop);
+		if ($this->client === null) {
+			$this->client = new GuzzleHttp\Client();
 		}
 
-		return $this->browser;
+		return $this->client;
 	}
 
 	/**

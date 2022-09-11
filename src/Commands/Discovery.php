@@ -317,20 +317,22 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 				$this->checkAndTerminate();
 			});
 
-			$this->eventLoop->futureTick(function () use ($io, $progressBar): void {
-				$this->logger->info('Starting Tuya connector discovery...', [
-					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'discovery-cmd',
-				]);
+			$this->eventLoop->futureTick(
+				async(function () use ($io, $progressBar): void {
+					$this->logger->info('Starting Tuya connector discovery...', [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type'   => 'discovery-cmd',
+					]);
 
-				$io->info('Starting Tuya connector discovery...');
+					$io->info('Starting Tuya connector discovery...');
 
-				$progressBar->start();
+					$progressBar->start();
 
-				$this->executedTime = $this->dateTimeFactory->getNow();
+					$this->executedTime = $this->dateTimeFactory->getNow();
 
-				$this->client?->discover();
-			});
+					$this->client?->discover();
+				})
+			);
 
 			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
 				self::QUEUE_PROCESSING_INTERVAL,

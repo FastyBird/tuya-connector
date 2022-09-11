@@ -39,8 +39,6 @@ use Ratchet\RFC6455;
 use React\EventLoop;
 use React\Socket;
 use Throwable;
-use function React\Async\async;
-use function React\Async\await;
 
 /**
  * Cloud devices client
@@ -386,7 +384,7 @@ final class Cloud implements Client
 	private function handleCommunication(): void
 	{
 		if (!$this->openApiApi->isConnected()) {
-			await($this->openApiApi->connect());
+			$this->openApiApi->connect();
 		}
 
 		foreach ($this->processedProperties as $index => $processedProperty) {
@@ -1020,9 +1018,9 @@ final class Cloud implements Client
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
-			async(function (): void {
+			function (): void {
 				$this->handleCommunication();
-			})
+			}
 		);
 	}
 

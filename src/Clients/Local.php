@@ -32,7 +32,6 @@ use Nette\Utils;
 use Psr\Log;
 use React\EventLoop;
 use Throwable;
-use function React\Async\async;
 
 /**
  * Local devices client
@@ -507,9 +506,9 @@ final class Local implements Client
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
-			async(function (): void {
+			function (): void {
 				$this->handleCommunication();
-			})
+			}
 		);
 	}
 

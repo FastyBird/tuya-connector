@@ -720,7 +720,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 				foreach ((array) $parsedMessage->offsetGet('dps') as $key => $value) {
 					if (is_string($value) || is_numeric($value) || is_bool($value)) {
-						$entityOrData[] = new Entities\API\DeviceDataPointStatus($key, $value);
+						$entityOrData[] = new Entities\API\DeviceDataPointStatus((string) $key, $value);
 					}
 				}
 			} elseif ($command->equalsValue(Types\LocalDeviceCommand::CMD_QUERY_WIFI)) {

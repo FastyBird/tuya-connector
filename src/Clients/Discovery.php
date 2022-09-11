@@ -32,6 +32,7 @@ use React\Datagram;
 use React\EventLoop;
 use SplObjectStorage;
 use Throwable;
+use function React\Async\async;
 use function React\Async\await;
 
 /**
@@ -217,12 +218,15 @@ final class Discovery
 			}
 
 			// Searching timeout
-			$this->eventLoop->addTimer(self::UDP_TIMEOUT, function (): void {
-				$this->connection?->close();
-				$this->connection = null;
+			$this->eventLoop->addTimer(
+				self::UDP_TIMEOUT,
+				async(function (): void {
+					$this->connection?->close();
+					$this->connection = null;
 
-				$this->discoverLocalDevices();
-			});
+					$this->discoverLocalDevices();
+				})
+			);
 
 			$this->processedProtocols[] = $protocolVersion;
 
@@ -407,14 +411,18 @@ final class Discovery
 	 * @param Entities\API\DiscoveredLocalDevice[] $devices
 	 *
 	 * @return void
+	 *
+	 * @throws Throwable
 	 */
 	private function handleFoundLocalDevices(
 		array $devices,
 	): void {
+		$this->openApiApi = $this->openApiApiFactory->create($this->connector);
+
+		$this->openApiApi->connect();
+
 		foreach ($devices as $device) {
 			$dataPoints = [];
-
-			$this->openApiApi = $this->openApiApiFactory->create($this->connector);
 
 			try {
 				/** @var Entities\API\DeviceInformation $deviceInformation */
