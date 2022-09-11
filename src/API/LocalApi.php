@@ -303,6 +303,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	public function disconnect(): void
 	{
 		$this->connection?->close();
+		$this->connection = null;
+
+		$this->connecting = false;
 
 		if ($this->heartBeatTimer !== null) {
 			$this->eventLoop->cancelTimer($this->heartBeatTimer);
@@ -331,6 +334,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	public function isConnected(): bool
 	{
 		return $this->connection !== null
+			&& !$this->isConnecting()
 			&& (
 				$this->lastHeartbeat === null
 				|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) < self::HEARTBEAT_TIMEOUT
@@ -608,6 +612,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
 				$data = array_slice($buffer, 20, $bufferSize - 8);
 
+				$payload = null;
+
 				if ((($buffer[21] << 8) + $buffer[22]) === ord('{')) {
 					$payload = pack('C*', ...$data);
 				} elseif (
@@ -652,10 +658,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 						return null;
 					}
-				} else {
-					return null;
 				}
 			} elseif ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V33)) {
+				$payload = null;
+
 				if ($size > 12) {
 					$data = array_slice($buffer, 20, ($size + 8) - 20);
 
@@ -684,8 +690,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 						return null;
 					}
-				} else {
-					return null;
 				}
 			} else {
 				$this->logger->warning(
@@ -725,9 +729,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			);
 
 			if (
-				$command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)
-				|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)
-				|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY_NEW)
+				(
+					$command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)
+					|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)
+					|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY_NEW)
+				) && $payload !== null
 			) {
 				if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
 					$parsedMessage = $this->schemaValidator->validate(
@@ -748,7 +754,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						$entityOrData[] = new Entities\API\DeviceDataPointStatus((string) $key, $value);
 					}
 				}
-			} elseif ($command->equalsValue(Types\LocalDeviceCommand::CMD_QUERY_WIFI)) {
+			} elseif (
+				$command->equalsValue(Types\LocalDeviceCommand::CMD_QUERY_WIFI)
+				&& $payload !== null
+			) {
 				$parsedMessage = $this->schemaValidator->validate(
 					$payload,
 					$this->getSchemaFilePath(self::WIFI_QUERY_MESSAGE_SCHEMA_FILENAME)

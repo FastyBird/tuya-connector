@@ -47,12 +47,12 @@ final class Local implements Client
 
 	use Nette\SmartObject;
 
-	private const HANDLER_START_DELAY = 2;
+	private const HANDLER_START_DELAY = 2.0;
 	private const HANDLER_PROCESSING_INTERVAL = 0.01;
 
-	private const SENDING_COMMAND_DELAY = 120;
+	private const SENDING_COMMAND_DELAY = 120.0;
 
-	private const RECONNECT_COOL_DOWN_TIME = 300;
+	private const RECONNECT_COOL_DOWN_TIME = 300.0;
 
 	private const CMD_STATUS = 'status';
 
@@ -263,7 +263,7 @@ final class Local implements Client
 					$this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat() === null
 					|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat()->getTimestamp()) >= self::RECONNECT_COOL_DOWN_TIME
 				) {
-					$this->devicesClients[$deviceItem->getId()->toString()]->connect();
+					$this->connectDeviceClient($deviceItem);
 				}
 			}
 
@@ -366,6 +366,8 @@ final class Local implements Client
 						$deviceItem->getIdentifier(),
 						true
 					));
+
+					$this->devicesClients[$deviceItem->getId()->toString()]->disconnect();
 				});
 		}
 
@@ -428,7 +430,7 @@ final class Local implements Client
 									])
 								);
 							})
-							->otherwise(function (Throwable $ex) use ($propertyItem): void {
+							->otherwise(function (Throwable $ex) use ($deviceItem, $propertyItem): void {
 								$this->logger->error(
 									'Could not call local device api',
 									[
@@ -454,11 +456,7 @@ final class Local implements Client
 
 								unset($this->processedProperties[$propertyItem->getId()->toString()]);
 
-								throw new DevicesModuleExceptions\TerminateException(
-									'Could not call local api',
-									$ex->getCode(),
-									$ex
-								);
+								$this->devicesClients[$deviceItem->getId()->toString()]->disconnect();
 							});
 
 						return true;
@@ -496,10 +494,51 @@ final class Local implements Client
 			))),
 		);
 
-		$this->devicesClients[$deviceItem->getId()->toString()]->on('message', function (Entities\API\Entity $message): void {
-			var_dump('RECEIVED');
-			var_dump($message->toArray());
-		});
+		$this->devicesClients[$deviceItem->getId()->toString()]->on(
+			'message',
+			function (Entities\API\Entity $message) use ($deviceItem): void {
+				if (
+					$message instanceof Entities\API\DeviceRawMessage
+					&& $message->getCommand()->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)
+					&& is_array($message->getData())
+				) {
+					$dataPointsStatuses = [];
+
+					foreach ($message->getData() as $entity) {
+						if ($entity instanceof Entities\API\DeviceDataPointStatus) {
+							$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
+								Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+								$entity->getCode(),
+								$entity->getValue()
+							);
+						}
+					}
+
+					$this->consumer->append(new Entities\Messages\DeviceStatus(
+						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+						$this->connector->getId(),
+						$deviceItem->getIdentifier(),
+						$dataPointsStatuses
+					));
+				}
+			}
+		);
+
+		$this->connectDeviceClient($deviceItem);
+	}
+
+	/**
+	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
+	 *
+	 * @return void
+	 */
+	private function connectDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): void
+	{
+		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
+			throw new Exceptions\InvalidState('Device client is not created');
+		}
+
+		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
 
 		$this->devicesClients[$deviceItem->getId()->toString()]
 			->connect()
