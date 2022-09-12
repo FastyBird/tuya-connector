@@ -76,8 +76,20 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/** @var bool */
 	private bool $connecting = false;
 
+	/** @var bool */
+	private bool $connected = false;
+
+	/** @var DateTimeInterface|null */
+	private ?DateTimeInterface $lastConnectAttempt = null;
+
 	/** @var DateTimeInterface|null */
 	private ?DateTimeInterface $lastHeartbeat = null;
+
+	/** @var DateTimeInterface|null */
+	private ?DateTimeInterface $disconnected = null;
+
+	/** @var DateTimeInterface|null */
+	private ?DateTimeInterface $lost = null;
 
 	/** @var Array<int, Promise\Deferred> */
 	private array $messagesListeners = [];
@@ -153,6 +165,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->lastHeartbeat = null;
 
 		$this->connecting = true;
+		$this->connected = false;
+
+		$this->lastConnectAttempt = $this->dateTimeFactory->getNow();
 
 		$deferred = new Promise\Deferred();
 
@@ -162,6 +177,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			$connector->connect($this->ipAddress . ':' . self::SOCKET_PORT)
 				->then(function (Socket\ConnectionInterface $connection) use ($deferred): void {
 					$this->connecting = false;
+					$this->connected = true;
+
+					$this->disconnected = null;
+					$this->lost = null;
 
 					$this->connection = $connection;
 
@@ -213,6 +232,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					});
 
 					$this->connection->on('error', function (Throwable $ex) {
+						$this->lost();
+
 						$this->logger->error(
 							'An error occurred on device connection',
 							[
@@ -227,11 +248,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 								],
 							]
 						);
-
-						$this->disconnect();
 					});
 
 					$this->connection->on('close', function () {
+						$this->disconnect();
+
 						$this->logger->debug(
 							'Connection with device was closed',
 							[
@@ -247,34 +268,50 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					$this->heartBeatTimer = $this->eventLoop->addPeriodicTimer(
 						self::HEARTBEAT_INTERVAL,
 						function (): void {
-							$this->logger->debug(
-								'Sending ping to device',
-								[
-									'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-									'type'   => 'localapi-api',
-									'device' => [
-										'identifier' => $this->identifier,
-									],
-								]
-							);
+							if (
+								$this->lastHeartbeat !== null
+								&& ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) >= self::HEARTBEAT_TIMEOUT
+							) {
+								$this->lost();
 
-							$this->sendRequest(
-								Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_HEART_BEAT),
-								null,
-								self::HEARTBEAT_SEQ_NO
-							);
+							} else {
+								$this->logger->debug(
+									'Sending ping to device',
+									[
+										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+										'type'   => 'localapi-api',
+										'device' => [
+											'identifier' => $this->identifier,
+										],
+									]
+								);
+
+								$this->sendRequest(
+									Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_HEART_BEAT),
+									null,
+									self::HEARTBEAT_SEQ_NO
+								);
+							}
 						}
 					);
+
+					$this->emit('connected');
 
 					$deferred->resolve();
 				})
 				->otherwise(function (Throwable $ex) use ($deferred): void {
+					$this->connection = null;
+
 					$this->connecting = false;
+					$this->connected = false;
+
+					$this->emit('error', [$ex]);
 
 					$deferred->reject($ex);
 				});
 		} catch (Throwable $ex) {
 			$this->connecting = false;
+			$this->connected = false;
 
 			$this->logger->error(
 				'Could not create connector',
@@ -291,6 +328,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				]
 			);
 
+			$this->emit('error', [$ex]);
+
 			$deferred->reject();
 		}
 
@@ -306,6 +345,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->connection = null;
 
 		$this->connecting = false;
+		$this->connected = false;
+
+		$this->disconnected = $this->dateTimeFactory->getNow();
 
 		if ($this->heartBeatTimer !== null) {
 			$this->eventLoop->cancelTimer($this->heartBeatTimer);
@@ -333,12 +375,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	 */
 	public function isConnected(): bool
 	{
-		return $this->connection !== null
-			&& !$this->isConnecting()
-			&& (
-				$this->lastHeartbeat === null
-				|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) < self::HEARTBEAT_TIMEOUT
-			);
+		return $this->connection !== null && !$this->connecting && $this->connected;
 	}
 
 	/**
@@ -347,6 +384,30 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	public function getLastHeartbeat(): ?DateTimeInterface
 	{
 		return $this->lastHeartbeat;
+	}
+
+	/**
+	 * @return DateTimeInterface|null
+	 */
+	public function getLastConnectAttempt(): ?DateTimeInterface
+	{
+		return $this->lastConnectAttempt;
+	}
+
+	/**
+	 * @return DateTimeInterface|null
+	 */
+	public function getDisconnected(): ?DateTimeInterface
+	{
+		return $this->disconnected;
+	}
+
+	/**
+	 * @return DateTimeInterface|null
+	 */
+	public function getLost(): ?DateTimeInterface
+	{
+		return $this->lost;
 	}
 
 	/**
@@ -411,6 +472,18 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	public function writeState(string $idx, int|float|string|bool $value): Promise\PromiseInterface
 	{
 		return $this->writeStates([$idx => $value]);
+	}
+
+	/**
+	 * @return void
+	 */
+	private function lost(): void
+	{
+		$this->emit('lost');
+
+		$this->lost = $this->dateTimeFactory->getNow();
+
+		$this->disconnect();
 	}
 
 	/**

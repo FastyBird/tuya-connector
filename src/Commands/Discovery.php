@@ -24,7 +24,6 @@ use FastyBird\Metadata;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Events;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
@@ -34,7 +33,6 @@ use Symfony\Component\Console;
 use Symfony\Component\Console\Input;
 use Symfony\Component\Console\Output;
 use Symfony\Component\Console\Style;
-use Symfony\Component\EventDispatcher;
 use Throwable;
 use function React\Async\async;
 
@@ -46,7 +44,7 @@ use function React\Async\async;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-class Discovery extends Console\Command\Command implements EventDispatcher\EventSubscriberInterface
+class Discovery extends Console\Command\Command
 {
 
 	private const DISCOVERY_WAITING_INTERVAL = 5.0;
@@ -133,16 +131,6 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 		$this->logger = $logger ?? new Log\NullLogger();
 
 		parent::__construct($name);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public static function getSubscribedEvents(): array
-	{
-		return [
-			Events\DiscoveryFinished::class => 'discoveryFinished',
-		];
 	}
 
 	/**
@@ -331,6 +319,12 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 					$this->executedTime = $this->dateTimeFactory->getNow();
 
 					$this->client?->discover();
+
+					$this->client?->on('finished', function (): void {
+						$this->client?->disconnect();
+
+						$this->checkAndTerminate();
+					});
 				})
 			);
 
@@ -459,18 +453,6 @@ class Discovery extends Console\Command\Command implements EventDispatcher\Event
 
 			return Console\Command\Command::FAILURE;
 		}
-	}
-
-	/**
-	 * @param Events\DiscoveryFinished $event
-	 *
-	 * @return void
-	 */
-	public function discoveryFinished(Events\DiscoveryFinished $event): void
-	{
-		$this->client?->disconnect();
-
-		$this->checkAndTerminate();
 	}
 
 	/**

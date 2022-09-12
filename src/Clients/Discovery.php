@@ -15,18 +15,17 @@
 
 namespace FastyBird\TuyaConnector\Clients;
 
+use Evenement;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\TuyaConnector\API;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Events;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
-use Psr\EventDispatcher as PsrEventDispatcher;
 use Psr\Log;
 use React\Datagram;
 use React\EventLoop;
@@ -43,10 +42,11 @@ use function React\Async\await;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class Discovery
+final class Discovery implements Evenement\EventEmitterInterface
 {
 
 	use Nette\SmartObject;
+	use Evenement\EventEmitterTrait;
 
 	private const UDP_BIND_IP = '0.0.0.0';
 	private const UDP_PORT = [
@@ -91,9 +91,6 @@ final class Discovery
 	/** @var EventLoop\LoopInterface */
 	private EventLoop\LoopInterface $eventLoop;
 
-	/** @var PsrEventDispatcher\EventDispatcherInterface|null */
-	private ?PsrEventDispatcher\EventDispatcherInterface $dispatcher;
-
 	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
@@ -104,7 +101,6 @@ final class Discovery
 	 * @param Helpers\Connector $connectorHelper
 	 * @param Consumers\Messages $consumer
 	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param PsrEventDispatcher\EventDispatcherInterface|null $dispatcher
 	 * @param Log\LoggerInterface|null $logger
 	 */
 	public function __construct(
@@ -114,7 +110,6 @@ final class Discovery
 		Helpers\Connector $connectorHelper,
 		Consumers\Messages $consumer,
 		EventLoop\LoopInterface $eventLoop,
-		?PsrEventDispatcher\EventDispatcherInterface $dispatcher,
 		?Log\LoggerInterface $logger = null
 	) {
 		$this->connector = $connector;
@@ -122,7 +117,6 @@ final class Discovery
 		$this->connectorHelper = $connectorHelper;
 		$this->consumer = $consumer;
 		$this->eventLoop = $eventLoop;
-		$this->dispatcher = $dispatcher;
 
 		$this->openApiApiFactory = $openApiApiFactory;
 		$this->localApiFactory = $localApiFactory;
@@ -247,9 +241,9 @@ final class Discovery
 
 		$this->discoveredLocalDevices = new SplObjectStorage();
 
-		$this->handleFoundLocalDevices($devices);
+		$devices = $this->handleFoundLocalDevices($devices);
 
-		$this->dispatcher?->dispatch(new Events\DiscoveryFinished());
+		$this->emit('finished', [$devices]);
 	}
 
 	/**
@@ -316,9 +310,9 @@ final class Discovery
 			return;
 		}
 
-		$this->handleFoundCloudDevices($devices, $devicesFactoryInfos);
+		$devices = $this->handleFoundCloudDevices($devices, $devicesFactoryInfos);
 
-		$this->dispatcher?->dispatch(new Events\DiscoveryFinished());
+		$this->emit('finished', [$devices]);
 	}
 
 	/**
@@ -410,13 +404,15 @@ final class Discovery
 	/**
 	 * @param Entities\API\DiscoveredLocalDevice[] $devices
 	 *
-	 * @return void
+	 * @return Entities\Messages\DiscoveredLocalDevice[]
 	 *
 	 * @throws Throwable
 	 */
 	private function handleFoundLocalDevices(
 		array $devices,
-	): void {
+	): array {
+		$processedDevices = [];
+
 		$this->openApiApi = $this->openApiApiFactory->create($this->connector);
 
 		$this->openApiApi->connect();
@@ -512,7 +508,7 @@ final class Discovery
 					);
 				}
 
-				$this->consumer->append(new Entities\Messages\DiscoveredLocalDevice(
+				$message = new Entities\Messages\DiscoveredLocalDevice(
 					$this->connector->getId(),
 					$device->getId(),
 					$device->getIpAddress(),
@@ -521,7 +517,11 @@ final class Discovery
 					$device->getVersion(),
 					$dataPoints,
 					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_DISCOVERY)
-				));
+				);
+
+				$processedDevices[] = $message;
+
+				$this->consumer->append($message);
 			} catch (Throwable $ex) {
 				$this->logger->error(
 					'Could not read device data points states',
@@ -538,23 +538,27 @@ final class Discovery
 				continue;
 			}
 		}
+
+		return $processedDevices;
 	}
 
 	/**
 	 * @param Entities\API\DeviceInformation[] $devices
 	 * @param Entities\API\DeviceFactoryInfos[] $devicesFactoryInfos
 	 *
-	 * @return void
+	 * @return Entities\Messages\DiscoveredCloudDevice[]
 	 *
 	 * @throws Throwable
 	 */
 	private function handleFoundCloudDevices(
 		array $devices,
 		array $devicesFactoryInfos
-	): void {
+	): array {
 		if ($this->openApiApi === null) {
-			return;
+			return [];
 		}
+
+		$processedDevices = [];
 
 		foreach ($devices as $device) {
 			/** @var Entities\API\DeviceFactoryInfos[] $deviceFactoryInfosFiltered */
@@ -689,8 +693,12 @@ final class Discovery
 				Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_DISCOVERY)
 			);
 
+			$processedDevices[] = $message;
+
 			$this->consumer->append($message);
 		}
+
+		return $processedDevices;
 	}
 
 }

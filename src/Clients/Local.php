@@ -257,13 +257,26 @@ final class Local implements Client
 			return true;
 		}
 
-		if (!$this->devicesClients[$deviceItem->getId()->toString()]->isConnected()) {
-			if (!$this->devicesClients[$deviceItem->getId()->toString()]->isConnecting()) {
+		$client = $this->devicesClients[$deviceItem->getId()->toString()];
+
+		if (!$client->isConnected()) {
+			if (!$client->isConnecting()) {
 				if (
-					$this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat() === null
-					|| ($this->dateTimeFactory->getNow()->getTimestamp() - $this->devicesClients[$deviceItem->getId()->toString()]->getLastHeartbeat()->getTimestamp()) >= self::RECONNECT_COOL_DOWN_TIME
+					$client->getLastConnectAttempt() === null
+					|| ($this->dateTimeFactory->getNow()->getTimestamp() - $client->getLastConnectAttempt()->getTimestamp()) >= self::RECONNECT_COOL_DOWN_TIME
 				) {
-					$this->connectDeviceClient($deviceItem);
+					var_dump('RECONNECT');
+					unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
+
+					$client->connect();
+
+				} else {
+					$this->consumer->append(new Entities\Messages\DeviceState(
+						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+						$this->connector->getId(),
+						$deviceItem->getIdentifier(),
+						false
+					));
 				}
 			}
 
@@ -364,10 +377,8 @@ final class Local implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						true
+						false
 					));
-
-					$this->devicesClients[$deviceItem->getId()->toString()]->disconnect();
 				});
 		}
 
@@ -454,9 +465,14 @@ final class Local implements Client
 									])
 								);
 
-								unset($this->processedProperties[$propertyItem->getId()->toString()]);
+								$this->consumer->append(new Entities\Messages\DeviceState(
+									Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
+									$this->connector->getId(),
+									$deviceItem->getIdentifier(),
+									false
+								));
 
-								$this->devicesClients[$deviceItem->getId()->toString()]->disconnect();
+								unset($this->processedProperties[$propertyItem->getId()->toString()]);
 							});
 
 						return true;
@@ -471,13 +487,13 @@ final class Local implements Client
 	/**
 	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
 	 *
-	 * @return void
+	 * @return API\LocalApi
 	 */
-	private function createDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): void
+	private function createDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): API\LocalApi
 	{
 		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
 
-		$this->devicesClients[$deviceItem->getId()->toString()] = $this->localApiFactory->create(
+		$client = $this->localApiFactory->create(
 			$deviceItem->getIdentifier(),
 			null,
 			strval($this->deviceHelper->getConfiguration(
@@ -494,7 +510,7 @@ final class Local implements Client
 			))),
 		);
 
-		$this->devicesClients[$deviceItem->getId()->toString()]->on(
+		$client->on(
 			'message',
 			function (Entities\API\Entity $message) use ($deviceItem): void {
 				if (
@@ -524,25 +540,9 @@ final class Local implements Client
 			}
 		);
 
-		$this->connectDeviceClient($deviceItem);
-	}
-
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return void
-	 */
-	private function connectDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): void
-	{
-		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
-			throw new Exceptions\InvalidState('Device client is not created');
-		}
-
-		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
-
-		$this->devicesClients[$deviceItem->getId()->toString()]
-			->connect()
-			->then(function () use ($deviceItem): void {
+		$client->on(
+			'connected',
+			function () use ($deviceItem): void {
 				$this->logger->debug(
 					'Connected to device',
 					[
@@ -560,10 +560,14 @@ final class Local implements Client
 					$deviceItem->getIdentifier(),
 					true
 				));
-			})
-			->otherwise(function (Throwable $ex) use ($deviceItem): void {
+			}
+		);
+
+		$client->on(
+			'error',
+			function (Throwable $ex) use ($deviceItem): void {
 				$this->logger->warning(
-					'Could not establish connection with device via local protocol',
+					'Connection with device failed',
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'local-client',
@@ -583,7 +587,12 @@ final class Local implements Client
 					$deviceItem->getIdentifier(),
 					false
 				));
-			});
+			}
+		);
+
+		$this->devicesClients[$deviceItem->getId()->toString()] = $client;
+
+		return $this->devicesClients[$deviceItem->getId()->toString()];
 	}
 
 	/**
