@@ -363,12 +363,12 @@ final class Local implements Client
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'local-client',
-							'connector' => [
-								'id' => $this->connector->getId()->toString(),
-							],
 							'exception' => [
 								'message' => $ex->getMessage(),
 								'code'    => $ex->getCode(),
+							],
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
 							],
 						]
 					);
@@ -447,12 +447,12 @@ final class Local implements Client
 									[
 										'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 										'type'      => 'local-client',
-										'connector' => [
-											'id' => $this->connector->getId()->toString(),
-										],
 										'exception' => [
 											'message' => $ex->getMessage(),
 											'code'    => $ex->getCode(),
+										],
+										'connector' => [
+											'id' => $this->connector->getId()->toString(),
 										],
 									]
 								);
@@ -548,6 +548,9 @@ final class Local implements Client
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'local-client',
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
+						],
 						'device'    => [
 							'id' => $deviceItem->getId()->toString(),
 						],
@@ -571,12 +574,15 @@ final class Local implements Client
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'local-client',
-						'device'    => [
-							'id' => $deviceItem->getId()->toString(),
-						],
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
+						],
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
+						],
+						'device'    => [
+							'id' => $deviceItem->getId()->toString(),
 						],
 					]
 				);

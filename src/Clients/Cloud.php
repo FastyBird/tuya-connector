@@ -271,12 +271,12 @@ final class Cloud implements Client
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'cloud-client',
-							'connector' => [
-								'id' => $this->connector->getId()->toString(),
-							],
 							'exception' => [
 								'message' => $ex->getMessage(),
 								'code'    => $ex->getCode(),
+							],
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
 							],
 						]
 					);
@@ -308,12 +308,12 @@ final class Cloud implements Client
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'cloud-client',
-						'connector' => [
-							'id' => $this->connector->getId()->toString(),
-						],
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
+						],
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
 						],
 					]
 				);
@@ -524,12 +524,12 @@ final class Cloud implements Client
 						[
 							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'      => 'cloud-client',
-							'connector' => [
-								'id' => $this->connector->getId()->toString(),
-							],
 							'exception' => [
 								'message' => $ex->getMessage(),
 								'code'    => $ex->getCode(),
+							],
+							'connector' => [
+								'id' => $this->connector->getId()->toString(),
 							],
 						]
 					);
@@ -564,26 +564,28 @@ final class Cloud implements Client
 					));
 				})
 				->otherwise(function (Throwable $ex): void {
-					$this->logger->error(
-						'Could not call cloud openapi',
-						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'cloud-client',
-							'connector' => [
-								'id' => $this->connector->getId()->toString(),
-							],
-							'exception' => [
-								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
-							],
-						]
-					);
+					if (!$ex instanceof Exceptions\OpenApiCall) {
+						$this->logger->error(
+							'Calling Tuya cloud failed',
+							[
+								'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type'      => 'cloud-client',
+								'exception' => [
+									'message' => $ex->getMessage(),
+									'code'    => $ex->getCode(),
+								],
+								'connector' => [
+									'id' => $this->connector->getId()->toString(),
+								],
+							]
+						);
 
-					throw new DevicesModuleExceptions\TerminateException(
-						'Could not call cloud openapi',
-						$ex->getCode(),
-						$ex
-					);
+						throw new DevicesModuleExceptions\TerminateException(
+							'Calling Tuya cloud failed',
+							$ex->getCode(),
+							$ex
+						);
+					}
 				});
 		}
 
@@ -644,21 +646,6 @@ final class Cloud implements Client
 								);
 							})
 							->otherwise(function (Throwable $ex) use ($propertyItem): void {
-								$this->logger->error(
-									'Could not call cloud openapi',
-									[
-										'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-										'type'      => 'cloud-client',
-										'connector' => [
-											'id' => $this->connector->getId()->toString(),
-										],
-										'exception' => [
-											'message' => $ex->getMessage(),
-											'code'    => $ex->getCode(),
-										],
-									]
-								);
-
 								$this->propertyStateHelper->setValue(
 									$propertyItem,
 									Utils\ArrayHash::from([
@@ -669,11 +656,28 @@ final class Cloud implements Client
 
 								unset($this->processedProperties[$propertyItem->getId()->toString()]);
 
-								throw new DevicesModuleExceptions\TerminateException(
-									'Could not call cloud openapi',
-									$ex->getCode(),
-									$ex
-								);
+								if (!$ex instanceof Exceptions\OpenApiCall) {
+									$this->logger->error(
+										'Calling Tuya cloud failed',
+										[
+											'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+											'type'      => 'cloud-client',
+											'exception' => [
+												'message' => $ex->getMessage(),
+												'code'    => $ex->getCode(),
+											],
+											'connector' => [
+												'id' => $this->connector->getId()->toString(),
+											],
+										]
+									);
+
+									throw new DevicesModuleExceptions\TerminateException(
+										'Calling Tuya cloud failed',
+										$ex->getCode(),
+										$ex
+									);
+								}
 							});
 
 						return true;
