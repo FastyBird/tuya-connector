@@ -16,12 +16,13 @@
 namespace FastyBird\TuyaConnector\DI;
 
 use Doctrine\Persistence;
-use FastyBird\TuyaConnector;
+use FastyBird\DevicesModule\DI as DevicesModuleDI;
 use FastyBird\TuyaConnector\API;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Commands;
 use FastyBird\TuyaConnector\Connector;
 use FastyBird\TuyaConnector\Consumers;
+use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Hydrators;
 use FastyBird\TuyaConnector\Mappers;
@@ -89,14 +90,14 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		}
 
 		// Service factory
-		$builder->addDefinition($this->prefix('service.factory'), new DI\Definitions\ServiceDefinition())
-			->setType(TuyaConnector\ConnectorFactory::class);
-
-		// Connector
-		$builder->addFactoryDefinition($this->prefix('connector'))
+		$builder->addFactoryDefinition($this->prefix('executor.factory'))
 			->setImplement(Connector\ConnectorFactory::class)
 			->getResultDefinition()
-			->setType(Connector\Connector::class);
+			->setType(Connector\Connector::class)
+			->addTag(
+				DevicesModuleDI\DevicesModuleExtension::CONNECTOR_TYPE_TAG,
+				Entities\TuyaConnector::CONNECTOR_TYPE
+			);
 
 		// Consumers
 		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())

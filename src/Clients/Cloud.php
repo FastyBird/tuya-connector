@@ -39,6 +39,7 @@ use Ratchet\RFC6455;
 use React\EventLoop;
 use React\Socket;
 use Throwable;
+use function React\Async\async;
 
 /**
  * Cloud devices client
@@ -290,7 +291,7 @@ final class Cloud implements Client
 
 				$this->pingTimer = $this->eventLoop->addPeriodicTimer(
 					self::PING_INTERVAL,
-					function () use ($connection): void {
+					async(function () use ($connection): void {
 						$connection->send(new RFC6455\Messaging\Frame(
 							strval($this->connectorHelper->getConfiguration(
 								$this->connector->getId(),
@@ -299,7 +300,7 @@ final class Cloud implements Client
 							true,
 							RFC6455\Messaging\Frame::OP_PING
 						));
-					}
+					})
 				);
 			})
 			->otherwise(function (Throwable $ex): void {
@@ -712,11 +713,11 @@ final class Cloud implements Client
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
 					],
-					'connector' => [
-						'id' => $this->connector->getId()->toString(),
-					],
 					'data'      => [
 						'message' => $message,
+					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
 					],
 				]
 			);
@@ -740,11 +741,11 @@ final class Cloud implements Client
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
 						],
-						'connector' => [
-							'id' => $this->connector->getId()->toString(),
-						],
 						'data'      => [
 							'message' => $message,
+						],
+						'connector' => [
+							'id' => $this->connector->getId()->toString(),
 						],
 					]
 				);
@@ -788,11 +789,11 @@ final class Cloud implements Client
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 				'type'   => 'cloud-client',
-				'connector' => [
-					'id' => $this->connector->getId()->toString(),
-				],
 				'data'   => [
 					'payload' => $payload,
+				],
+				'connector' => [
+					'id' => $this->connector->getId()->toString(),
 				],
 			]
 		);
@@ -813,11 +814,11 @@ final class Cloud implements Client
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
 					],
-					'connector' => [
-						'id' => $this->connector->getId()->toString(),
-					],
 					'data'      => [
 						'payload' => $payload,
+					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
 					],
 				]
 			);
@@ -891,10 +892,10 @@ final class Cloud implements Client
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 				'type'   => 'cloud-client',
+				'data'   => $decryptedData,
 				'connector' => [
 					'id' => $this->connector->getId()->toString(),
 				],
-				'data'   => $decryptedData,
 			]
 		);
 
@@ -914,11 +915,11 @@ final class Cloud implements Client
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
 					],
-					'connector' => [
-						'id' => $this->connector->getId()->toString(),
-					],
 					'data'      => [
 						'data' => $decryptedData,
+					],
+					'connector' => [
+						'id' => $this->connector->getId()->toString(),
 					],
 				]
 			);

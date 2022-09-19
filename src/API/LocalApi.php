@@ -31,6 +31,7 @@ use React\EventLoop;
 use React\Promise;
 use React\Socket;
 use Throwable;
+use function React\Async\async;
 
 /**
  * Local UDP device interface
@@ -217,11 +218,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 									[
 										'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 										'type'    => 'localapi-api',
-										'device'  => [
-											'identifier' => $this->identifier,
-										],
 										'message' => [
 											'data' => $message->getData(),
+										],
+										'device'  => [
+											'identifier' => $this->identifier,
 										],
 									]
 								);
@@ -239,12 +240,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 							[
 								'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 								'type'      => 'localapi-api',
-								'device'    => [
-									'identifier' => $this->identifier,
-								],
 								'exception' => [
 									'message' => $ex->getMessage(),
 									'code'    => $ex->getCode(),
+								],
+								'device'    => [
+									'identifier' => $this->identifier,
 								],
 							]
 						);
@@ -267,7 +268,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 					$this->heartBeatTimer = $this->eventLoop->addPeriodicTimer(
 						self::HEARTBEAT_INTERVAL,
-						function (): void {
+						async(function (): void {
 							if (
 								$this->lastHeartbeat !== null
 								&& ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) >= self::HEARTBEAT_TIMEOUT
@@ -292,7 +293,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 									self::HEARTBEAT_SEQ_NO
 								);
 							}
-						}
+						})
 					);
 
 					$this->emit('connected');
@@ -318,12 +319,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'      => 'localapi-api',
-					'device'    => [
-						'identifier' => $this->identifier,
-					],
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
+					],
+					'device'    => [
+						'identifier' => $this->identifier,
 					],
 				]
 			);
@@ -423,12 +424,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
 			self::WAIT_FOR_REPLY_TIMEOUT,
-			function () use ($deferred, $sequenceNr): void {
+			async(function () use ($deferred, $sequenceNr): void {
 				$deferred->reject(new Exceptions\LocalApiTimeout('Sending command to device failed'));
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
-			}
+			})
 		);
 
 		return $deferred->promise();
@@ -452,12 +453,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 		$this->messagesListenersTimers[$sequenceNr] = $this->eventLoop->addTimer(
 			self::WAIT_FOR_REPLY_TIMEOUT,
-			function () use ($deferred, $sequenceNr): void {
+			async(function () use ($deferred, $sequenceNr): void {
 				$deferred->reject(new Exceptions\LocalApiTimeout('Sending command to device failed'));
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
-			}
+			})
 		);
 
 		return $deferred->promise();
@@ -514,13 +515,13 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			[
 				'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 				'type'    => 'localapi-api',
-				'device'  => [
-					'identifier' => $this->identifier,
-				],
 				'message' => [
 					'command'  => $command->getValue(),
 					'data'     => $data,
 					'sequence' => $sequenceNr,
+				],
+				'device'  => [
+					'identifier' => $this->identifier,
 				],
 			]
 		);
@@ -653,12 +654,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					[
 						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'    => 'localapi-api',
-						'device'  => [
-							'identifier' => $this->identifier,
-						],
 						'message' => [
 							'command'  => $command,
 							'sequence' => $sequenceNr,
+						],
+						'device'  => [
+							'identifier' => $this->identifier,
 						],
 					]
 				);
@@ -770,13 +771,13 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					[
 						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'    => 'localapi-api',
-						'device'  => [
-							'identifier' => $this->identifier,
-						],
 						'message' => [
 							'command'    => $command->getValue(),
 							'sequence'   => $sequenceNr,
 							'returnCode' => $returnCode,
+						],
+						'device'  => [
+							'identifier' => $this->identifier,
 						],
 					]
 				);
@@ -789,14 +790,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				[
 					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'    => 'localapi-api',
-					'device'  => [
-						'identifier' => $this->identifier,
-					],
 					'message' => [
 						'command'    => $command->getValue(),
 						'data'       => $payload,
 						'sequence'   => $sequenceNr,
 						'returnCode' => $returnCode,
+					],
+					'device'  => [
+						'identifier' => $this->identifier,
 					],
 				]
 			);
@@ -938,12 +939,12 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				[
 					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'      => 'localapi-api',
-					'device'    => [
-						'identifier' => $this->identifier,
-					],
 					'exception' => [
 						'message' => $ex->getMessage(),
 						'code'    => $ex->getCode(),
+					],
+					'device'    => [
+						'identifier' => $this->identifier,
 					],
 				]
 			);

@@ -669,12 +669,12 @@ final class Discovery implements Evenement\EventEmitterInterface
 					[
 						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'      => 'discovery-client',
-						'device'    => [
-							'id' => $device->getId(),
-						],
 						'exception' => [
 							'message' => $ex->getMessage(),
 							'code'    => $ex->getCode(),
+						],
+						'device'    => [
+							'id' => $device->getId(),
 						],
 					]
 				);

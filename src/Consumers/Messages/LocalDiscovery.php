@@ -239,7 +239,7 @@ final class LocalDiscovery implements Consumer
 					'Device could not be updated',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'cloud-discovery-message-consumer',
+						'type'   => 'local-discovery-message-consumer',
 						'device' => [
 							'id' => $deviceItem->getId()->toString(),
 						],
@@ -309,7 +309,7 @@ final class LocalDiscovery implements Consumer
 					'Creating new device channel',
 					[
 						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'    => 'cloud-discovery-message-consumer',
+						'type'   => 'local-discovery-message-consumer',
 						'device'  => [
 							'id' => $deviceEntity->getPlainId(),
 						],
@@ -360,7 +360,7 @@ final class LocalDiscovery implements Consumer
 							'Channel property could not be updated',
 							[
 								'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'     => 'cloud-discovery-message-consumer',
+								'type'   => 'local-discovery-message-consumer',
 								'device'   => [
 									'id' => $channelEntity->getDevice()->getId()->toString(),
 								],

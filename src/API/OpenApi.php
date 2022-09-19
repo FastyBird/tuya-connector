@@ -1015,15 +1015,15 @@ final class OpenApi
 						$this->logger->error('Received payload is not valid', [
 							'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 							'type'    => 'openapi-api',
+							'exception' => [
+								'message' => $ex->getMessage(),
+								'code'    => $ex->getCode(),
+							],
 							'request' => [
 								'method' => $method,
 								'url'    => ($this->endpoint->getValue() . $path),
 								'params' => $params,
 								'body'   => $body,
-							],
-							'exception' => [
-								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
 							],
 						]);
 
@@ -1038,15 +1038,15 @@ final class OpenApi
 					$this->logger->error('Calling api endpoint failed', [
 						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 						'type'    => 'openapi-api',
+						'exception' => [
+							'message' => $ex->getMessage(),
+							'code'    => $ex->getCode(),
+						],
 						'request' => [
 							'method' => $method,
 							'url'    => ($this->endpoint->getValue() . $path),
 							'params' => $params,
 							'body'   => $body,
-						],
-						'exception' => [
-							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
 						],
 					]);
 
@@ -1071,15 +1071,15 @@ final class OpenApi
 				$this->logger->error('Calling api endpoint failed', [
 					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'    => 'openapi-api',
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
 					'request' => [
 						'method' => $method,
 						'url'    => ($this->endpoint->getValue() . $path),
 						'params' => $params,
 						'body'   => $body,
-					],
-					'exception' => [
-						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
 					],
 				]);
 
@@ -1089,15 +1089,15 @@ final class OpenApi
 				$this->logger->error('Received payload is not valid', [
 					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
 					'type'    => 'openapi-api',
+					'exception' => [
+						'message' => $ex->getMessage(),
+						'code'    => $ex->getCode(),
+					],
 					'request' => [
 						'method' => $method,
 						'url'    => ($this->endpoint->getValue() . $path),
 						'params' => $params,
 						'body'   => $body,
-					],
-					'exception' => [
-						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
 					],
 				]);
 
