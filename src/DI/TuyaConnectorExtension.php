@@ -92,12 +92,12 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		// Service factory
 		$builder->addFactoryDefinition($this->prefix('executor.factory'))
 			->setImplement(Connector\ConnectorFactory::class)
-			->getResultDefinition()
-			->setType(Connector\Connector::class)
 			->addTag(
 				DevicesModuleDI\DevicesModuleExtension::CONNECTOR_TYPE_TAG,
 				Entities\TuyaConnector::CONNECTOR_TYPE
-			);
+			)
+			->getResultDefinition()
+			->setType(Connector\Connector::class);
 
 		// Consumers
 		$builder->addDefinition($this->prefix('consumer.proxy'), new DI\Definitions\ServiceDefinition())
