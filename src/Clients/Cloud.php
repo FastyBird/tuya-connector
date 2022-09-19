@@ -361,22 +361,6 @@ final class Cloud implements Client
 	}
 
 	/**
-	 * {@inheritDoc}
-	 */
-	public function writeDeviceControl(MetadataEntities\Actions\IActionDeviceControlEntity $action): void
-	{
-		// TODO: Implement writeDeviceControl() method.
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public function writeChannelControl(MetadataEntities\Actions\IActionChannelControlEntity $action): void
-	{
-		// TODO: Implement writeChannelControl() method.
-	}
-
-	/**
 	 * @return void
 	 *
 	 * @throws DevicesModuleExceptions\TerminateException

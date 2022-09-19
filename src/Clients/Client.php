@@ -15,8 +15,6 @@
 
 namespace FastyBird\TuyaConnector\Clients;
 
-use FastyBird\Metadata\Entities as MetadataEntities;
-
 /**
  * Base client service
  *
@@ -27,20 +25,6 @@ use FastyBird\Metadata\Entities as MetadataEntities;
  */
 interface Client
 {
-
-	/**
-	 * @param MetadataEntities\Actions\IActionDeviceControlEntity $action
-	 *
-	 * @return void
-	 */
-	public function writeDeviceControl(MetadataEntities\Actions\IActionDeviceControlEntity $action): void;
-
-	/**
-	 * @param MetadataEntities\Actions\IActionChannelControlEntity $action
-	 *
-	 * @return void
-	 */
-	public function writeChannelControl(MetadataEntities\Actions\IActionChannelControlEntity $action): void;
 
 	/**
 	 * Create servers/clients
