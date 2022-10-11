@@ -1,7 +1,5 @@
 # FastyBird IoT Tuya connector
 
-***
-
 [![Build Status](https://badgen.net/github/checks/FastyBird/tuya-connector/master?cache=300&style=flast-square)](https://github.com/FastyBird/tuya-connector/actions)
 [![Licence](https://badgen.net/github/license/FastyBird/tuya-connector?cache=300&style=flast-square)](https://github.com/FastyBird/tuya-connector/blob/master/LICENSE.md)
 [![Code coverage](https://badgen.net/coveralls/c/github/FastyBird/tuya-connector?cache=300&style=flast-square)](https://coveralls.io/r/FastyBird/tuya-connector)
@@ -15,9 +13,8 @@
 
 ## What is Tuya connector?
 
-Tuya connector is a [FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things)
-extension which is integrating [Tuya](https://www.tuya.com) devices into [FastyBird](https://www.fastybird.com) IoT
-system
+Tuya connector is extension for [FastyBird](https://www.fastybird.com) [IoT](https://en.wikipedia.org/wiki/Internet_of_things) ecosystem
+which is integrating [Tuya](https://www.tuya.com) devices.
 
 Tuya connector is an [Apache2 licensed](http://www.apache.org/licenses/LICENSE-2.0) distributed extension, developed
 in [PHP](https://www.php.net) with [Nette framework](https://nette.org).
@@ -33,9 +30,8 @@ in [PHP](https://www.php.net) with [Nette framework](https://nette.org).
 
 ## Requirements
 
-Tuya connector is tested against PHP 8.1
-and [ReactPHP Socket](https://github.com/reactphp/socket) 1.11 async, streaming plaintext TCP/IP and secure TLS socket server and client connections
-and [Nette framework](https://nette.org/en/) 3.0 PHP framework for real programmers
+Tuya connector is tested against PHP 8.1 and require installed [OpenSSL](https://www.php.net/manual/en/book.openssl.php) and [Process Control](https://www.php.net/manual/en/book.pcntl.php)
+PHP extensions.
 
 ## Installation
 
@@ -47,7 +43,7 @@ The best way to install **fastybird/tuya-connector** is using [Composer](http://
 composer require fastybird/tuya-connector
 ```
 
-### Marketplace installation
+### Marketplace installation [WIP]
 
 You could install this connector in your [FastyBird IoT](https://www.fastybird.com) application under marketplace
 section
@@ -76,7 +72,7 @@ For release info check [release page](https://github.com/FastyBird/tuya-connecto
 		<tr>
 			<td align="center">
 				<a href="https://github.com/akadlec">
-					<img width="80" height="80" src="https://avatars3.githubusercontent.com/u/1866672?s=460&amp;v=4">
+					<img alt="akadlec" width="80" height="80" src="https://avatars3.githubusercontent.com/u/1866672?s=460&amp;v=4" />
 				</a>
 				<br>
 				<a href="https://github.com/akadlec">Adam Kadlec</a>

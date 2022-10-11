@@ -30,10 +30,6 @@ use FastyBird\TuyaConnector\Schemas;
 use FastyBird\TuyaConnector\Subscribers;
 use Nette;
 use Nette\DI;
-use Nette\Schema;
-use React\EventLoop;
-use stdClass;
-use function assert;
 use const DIRECTORY_SEPARATOR;
 
 /**
@@ -62,28 +58,9 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		};
 	}
 
-	public function getConfigSchema(): Schema\Schema
-	{
-		return Schema\Expect::structure([
-			'loop' => Schema\Expect::anyOf(
-				Schema\Expect::string(),
-				Schema\Expect::type(DI\Definitions\Statement::class),
-			)
-				->nullable(),
-		]);
-	}
-
 	public function loadConfiguration(): void
 	{
 		$builder = $this->getContainerBuilder();
-		$configuration = $this->getConfig();
-		assert($configuration instanceof stdClass);
-
-		if ($configuration->loop === null && $builder->getByType(EventLoop\LoopInterface::class) === null) {
-			$builder->addDefinition($this->prefix('client.loop'), new DI\Definitions\ServiceDefinition())
-				->setType(EventLoop\LoopInterface::class)
-				->setFactory('React\EventLoop\Factory::create');
-		}
 
 		// Consumers
 		$builder->addDefinition($this->prefix('consumer.discovery.cloudDevice'), new DI\Definitions\ServiceDefinition())
