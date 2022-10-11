@@ -30,64 +30,31 @@ final class DeviceFactoryInfos implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $id;
-
-	/** @var string|null */
-	private ?string $uuid;
-
-	/** @var string|null */
-	private ?string $sn;
-
-	/** @var string|null */
-	private ?string $mac;
-
-	/**
-	 * @param string $id
-	 * @param string|null $uuid
-	 * @param string|null $sn
-	 * @param string|null $mac
-	 */
 	public function __construct(
-		string $id,
-		?string $uuid,
-		?string $sn,
-		?string $mac
-	) {
-		$this->id = $id;
-		$this->uuid = $uuid;
-		$this->sn = $sn;
-		$this->mac = $mac;
+		private readonly string $id,
+		private readonly string|null $uuid,
+		private readonly string|null $sn,
+		private readonly string|null $mac,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getId(): string
 	{
 		return $this->id;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getUuid(): ?string
+	public function getUuid(): string|null
 	{
 		return $this->uuid;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getMac(): ?string
+	public function getMac(): string|null
 	{
 		return $this->mac;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getSn(): ?string
+	public function getSn(): string|null
 	{
 		return $this->sn;
 	}
@@ -98,10 +65,10 @@ final class DeviceFactoryInfos implements Entity
 	public function toArray(): array
 	{
 		return [
-			'id'   => $this->getId(),
+			'id' => $this->getId(),
 			'uuid' => $this->getUuid(),
-			'sn'   => $this->getSn(),
-			'mac'  => $this->getMac(),
+			'sn' => $this->getSn(),
+			'mac' => $this->getMac(),
 		];
 	}
 

@@ -22,32 +22,25 @@ use FastyBird\TuyaConnector\Entities;
 /**
  * Tuya connector entity schema
  *
+ * @phpstan-extends DevicesModuleSchemas\Connectors\Connector<Entities\TuyaConnector>
+ *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Schemas
- *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
- *
- * @phpstan-extends DevicesModuleSchemas\Connectors\ConnectorSchema<Entities\TuyaConnector>
  */
-final class TuyaConnector extends DevicesModuleSchemas\Connectors\ConnectorSchema
+final class TuyaConnector extends DevicesModuleSchemas\Connectors\Connector
 {
 
 	/**
 	 * Define entity schema type string
 	 */
-	public const SCHEMA_TYPE = MetadataTypes\ConnectorSourceType::SOURCE_CONNECTOR_TUYA . '/connector/' . Entities\TuyaConnector::CONNECTOR_TYPE;
+	public const SCHEMA_TYPE = MetadataTypes\ConnectorSource::SOURCE_CONNECTOR_TUYA . '/connector/' . Entities\TuyaConnector::CONNECTOR_TYPE;
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getEntityClass(): string
 	{
 		return Entities\TuyaConnector::class;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getType(): string
 	{
 		return self::SCHEMA_TYPE;

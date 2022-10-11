@@ -21,6 +21,7 @@ use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Entities;
@@ -34,7 +35,15 @@ use Symfony\Component\Console\Input;
 use Symfony\Component\Console\Output;
 use Symfony\Component\Console\Style;
 use Throwable;
+use function array_key_first;
+use function array_search;
+use function array_values;
+use function count;
+use function intval;
+use function is_string;
 use function React\Async\async;
+use function sprintf;
+use const SIGINT;
 
 /**
  * Connector devices discovery command
@@ -47,110 +56,68 @@ use function React\Async\async;
 class Discovery extends Console\Command\Command
 {
 
+	public const NAME = 'fb:tuya-connector:discover';
+
 	private const DISCOVERY_WAITING_INTERVAL = 5.0;
+
 	private const DISCOVERY_MAX_PROCESSING_INTERVAL = 30.0;
 
 	private const QUEUE_PROCESSING_INTERVAL = 0.01;
 
-	/** @var DateTimeInterface|null */
-	private ?DateTimeInterface $executedTime = null;
+	private DateTimeInterface|null $executedTime = null;
 
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $consumerTimer;
+	private EventLoop\TimerInterface|null $consumerTimer;
 
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $progressBarTimer;
+	private EventLoop\TimerInterface|null $progressBarTimer;
 
-	/** @var Clients\Discovery|null */
-	private ?Clients\Discovery $client = null;
+	private Clients\Discovery|null $client = null;
 
-	/** @var Clients\DiscoveryFactory */
-	private Clients\DiscoveryFactory $clientFactory;
-
-	/** @var Helpers\Connector */
-	private Helpers\Connector $connectorHelper;
-
-	/** @var Helpers\Device */
-	private Helpers\Device $deviceHelper;
-
-	/** @var Consumers\Messages */
-	private Consumers\Messages $consumer;
-
-	/** @var DevicesModuleModels\DataStorage\IConnectorsRepository */
-	private DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository;
-
-	/** @var DevicesModuleModels\Devices\IDevicesRepository */
-	private DevicesModuleModels\Devices\IDevicesRepository $devicesRepository;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
-	/**
-	 * @param Clients\DiscoveryFactory $clientFactory
-	 * @param Helpers\Connector $connectorHelper
-	 * @param Helpers\Device $deviceHelper
-	 * @param Consumers\Messages $consumer
-	 * @param DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository
-	 * @param DevicesModuleModels\Devices\IDevicesRepository $devicesRepository
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param Log\LoggerInterface|null $logger
-	 * @param string|null $name
-	 */
 	public function __construct(
-		Clients\DiscoveryFactory $clientFactory,
-		Helpers\Connector $connectorHelper,
-		Helpers\Device $deviceHelper,
-		Consumers\Messages $consumer,
-		DevicesModuleModels\DataStorage\IConnectorsRepository $connectorsRepository,
-		DevicesModuleModels\Devices\IDevicesRepository $devicesRepository,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
-		?Log\LoggerInterface $logger = null,
-		?string $name = null
-	) {
-		$this->clientFactory = $clientFactory;
-
-		$this->connectorHelper = $connectorHelper;
-		$this->deviceHelper = $deviceHelper;
-		$this->consumer = $consumer;
-
-		$this->connectorsRepository = $connectorsRepository;
-		$this->devicesRepository = $devicesRepository;
-
-		$this->dateTimeFactory = $dateTimeFactory;
-
-		$this->eventLoop = $eventLoop;
-
+		private readonly Clients\DiscoveryFactory $clientFactory,
+		private readonly Helpers\Connector $connectorHelper,
+		private readonly Helpers\Device $deviceHelper,
+		private readonly Consumers\Messages $consumer,
+		private readonly DevicesModuleModels\DataStorage\ConnectorsRepository $connectorsRepository,
+		private readonly DevicesModuleModels\Devices\DevicesRepository $devicesRepository,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		private readonly EventLoop\LoopInterface $eventLoop,
+		Log\LoggerInterface|null $logger = null,
+		string|null $name = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 
 		parent::__construct($name);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	protected function configure(): void
 	{
 		$this
-			->setName('fb:tuya-connector:discover')
+			->setName(self::NAME)
 			->setDescription('Tuya connector devices discovery')
 			->setDefinition(
 				new Input\InputDefinition([
-					new Input\InputOption('connector', 'c', Input\InputOption::VALUE_OPTIONAL, 'Run devices module connector', true),
-					new Input\InputOption('no-confirm', null, Input\InputOption::VALUE_NONE, 'Do not ask for any confirmation'),
-				])
+					new Input\InputOption(
+						'connector',
+						'c',
+						Input\InputOption::VALUE_OPTIONAL,
+						'Run devices module connector',
+						true,
+					),
+					new Input\InputOption(
+						'no-confirm',
+						null,
+						Input\InputOption::VALUE_NONE,
+						'Do not ask for any confirmation',
+					),
+				]),
 			);
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @throws MetadataExceptions\FileNotFound
 	 */
 	protected function execute(Input\InputInterface $input, Output\OutputInterface $output): int
 	{
@@ -163,7 +130,7 @@ class Discovery extends Console\Command\Command
 		if (!$input->getOption('no-confirm')) {
 			$question = new Console\Question\ConfirmationQuestion(
 				'Would you like to continue?',
-				false
+				false,
 			);
 
 			$continue = $io->askQuestion($question);
@@ -180,11 +147,9 @@ class Discovery extends Console\Command\Command
 		) {
 			$connectorId = $input->getOption('connector');
 
-			if (Uuid\Uuid::isValid($connectorId)) {
-				$connector = $this->connectorsRepository->findById(Uuid\Uuid::fromString($connectorId));
-			} else {
-				$connector = $this->connectorsRepository->findByIdentifier($connectorId);
-			}
+			$connector = Uuid\Uuid::isValid($connectorId)
+				? $this->connectorsRepository->findById(Uuid\Uuid::fromString($connectorId))
+				: $this->connectorsRepository->findByIdentifier($connectorId);
 
 			if ($connector === null) {
 				$io->warning('Connector was not found in system');
@@ -199,7 +164,9 @@ class Discovery extends Console\Command\Command
 					continue;
 				}
 
-				$connectors[$connector->getIdentifier()] = $connector->getIdentifier() . $connector->getName() ? ' [' . $connector->getName() . ']' : '';
+				$connectors[$connector->getIdentifier()] = $connector->getIdentifier() . $connector->getName()
+					? ' [' . $connector->getName() . ']'
+					: '';
 			}
 
 			if (count($connectors) === 0) {
@@ -221,8 +188,11 @@ class Discovery extends Console\Command\Command
 
 				if (!$input->getOption('no-confirm')) {
 					$question = new Console\Question\ConfirmationQuestion(
-						sprintf('Would you like to discover devices with "%s" connector', $connector->getName() ?? $connector->getIdentifier()),
-						false
+						sprintf(
+							'Would you like to discover devices with "%s" connector',
+							$connector->getName() ?? $connector->getIdentifier(),
+						),
+						false,
 					);
 
 					if (!$io->askQuestion($question)) {
@@ -232,12 +202,12 @@ class Discovery extends Console\Command\Command
 			} else {
 				$question = new Console\Question\ChoiceQuestion(
 					'Please select connector to execute',
-					array_values($connectors)
+					array_values($connectors),
 				);
 
 				$question->setErrorMessage('Selected connector: %s is not valid.');
 
-				$connectorIdentifier = array_search($io->askQuestion($question), $connectors);
+				$connectorIdentifier = array_search($io->askQuestion($question), $connectors, true);
 
 				if ($connectorIdentifier === false) {
 					$io->error('Something went wrong, connector could not be loaded');
@@ -246,8 +216,8 @@ class Discovery extends Console\Command\Command
 						'Connector identifier was not able to get from answer',
 						[
 							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'   => 'discovery-cmd',
-						]
+							'type' => 'discovery-cmd',
+						],
 					);
 
 					return Console\Command\Command::FAILURE;
@@ -263,8 +233,8 @@ class Discovery extends Console\Command\Command
 					'Connector was not found',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'discovery-cmd',
-					]
+						'type' => 'discovery-cmd',
+					],
 				);
 
 				return Console\Command\Command::FAILURE;
@@ -279,7 +249,7 @@ class Discovery extends Console\Command\Command
 
 		$mode = $this->connectorHelper->getConfiguration(
 			$connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_CLIENT_MODE)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_CLIENT_MODE),
 		);
 
 		if ($mode === null) {
@@ -292,19 +262,19 @@ class Discovery extends Console\Command\Command
 
 		$progressBar = new Console\Helper\ProgressBar(
 			$output,
-			intval(self::DISCOVERY_MAX_PROCESSING_INTERVAL * 60)
+			intval(self::DISCOVERY_MAX_PROCESSING_INTERVAL * 60),
 		);
 
 		$progressBar->setFormat('[%bar%] %percent:3s%% %elapsed:6s%/%estimated:-6s% %');
 
 		try {
-			$this->eventLoop->addSignal(SIGINT, function (int $signal) use ($io): void {
+			$this->eventLoop->addSignal(SIGINT, function () use ($io): void {
 				$this->logger->info(
 					'Stopping Tuya connector discovery...',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'discovery-cmd',
-					]
+						'type' => 'discovery-cmd',
+					],
 				);
 
 				$io->info('Stopping Tuya connector discovery...');
@@ -320,8 +290,8 @@ class Discovery extends Console\Command\Command
 						'Starting Tuya connector discovery...',
 						[
 							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'   => 'discovery-cmd',
-						]
+							'type' => 'discovery-cmd',
+						],
 					);
 
 					$io->info('Starting Tuya connector discovery...');
@@ -337,21 +307,21 @@ class Discovery extends Console\Command\Command
 
 						$this->checkAndTerminate();
 					});
-				})
+				}),
 			);
 
 			$this->consumerTimer = $this->eventLoop->addPeriodicTimer(
 				self::QUEUE_PROCESSING_INTERVAL,
 				async(function (): void {
 					$this->consumer->consume();
-				})
+				}),
 			);
 
 			$this->progressBarTimer = $this->eventLoop->addPeriodicTimer(
 				0.1,
-				async(function () use ($progressBar): void {
+				async(static function () use ($progressBar): void {
 					$progressBar->advance();
-				})
+				}),
 			);
 
 			$this->eventLoop->addTimer(
@@ -360,7 +330,7 @@ class Discovery extends Console\Command\Command
 					$this->client?->disconnect();
 
 					$this->checkAndTerminate();
-				})
+				}),
 			);
 
 			$this->eventLoop->run();
@@ -369,10 +339,10 @@ class Discovery extends Console\Command\Command
 
 			$io->newLine();
 
-			$findDevicesQuery = new DevicesModuleQueries\FindDevicesQuery();
-			$findDevicesQuery->byConnectorId($connector->getId());
+			$FindDevices = new DevicesModuleQueries\FindDevices();
+			$FindDevices->byConnectorId($connector->getId());
 
-			$devices = $this->devicesRepository->findAllBy($findDevicesQuery);
+			$devices = $this->devicesRepository->findAllBy($FindDevices);
 
 			$table = new Console\Helper\Table($output);
 			$table->setHeaders([
@@ -397,16 +367,18 @@ class Discovery extends Console\Command\Command
 
 					$ipAddress = $this->deviceHelper->getConfiguration(
 						$device->getId(),
-						Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
+						Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS),
 					);
 
-					$hardwareModelAttribute = $device->findAttribute(Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MODEL);
+					$hardwareModelAttribute = $device->findAttribute(
+						Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MODEL,
+					);
 
 					$table->addRow([
 						$foundDevices,
 						$device->getPlainId(),
 						$device->getName() ?? $device->getIdentifier(),
-						$hardwareModelAttribute !== null ? $hardwareModelAttribute->getContent(true) : 'N/A',
+						$hardwareModelAttribute?->getContent(true) ?? 'N/A',
 						is_string($ipAddress) ? $ipAddress : 'N/A',
 					]);
 				}
@@ -428,18 +400,17 @@ class Discovery extends Console\Command\Command
 			$io->success('Devices discovery was successfully finished');
 
 			return Console\Command\Command::SUCCESS;
-
-		} catch (DevicesModuleExceptions\TerminateException $ex) {
+		} catch (DevicesModuleExceptions\Terminate $ex) {
 			$this->logger->error(
 				'An error occurred',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'discovery-cmd',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'discovery-cmd',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-				]
+				],
 			);
 
 			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
@@ -449,18 +420,17 @@ class Discovery extends Console\Command\Command
 			$this->eventLoop->stop();
 
 			return Console\Command\Command::FAILURE;
-
 		} catch (Throwable $ex) {
 			$this->logger->error(
 				'An unhandled error occurred',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'discovery-cmd',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'discovery-cmd',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-				]
+				],
 			);
 
 			$io->error('Something went wrong, discovery could not be finished. Error was logged.');
@@ -473,9 +443,6 @@ class Discovery extends Console\Command\Command
 		}
 	}
 
-	/**
-	 * @return void
-	 */
 	private function checkAndTerminate(): void
 	{
 		if ($this->consumer->isEmpty()) {
@@ -498,8 +465,8 @@ class Discovery extends Console\Command\Command
 					'Discovery exceeded reserved time and have been terminated',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'discovery-cmd',
-					]
+						'type' => 'discovery-cmd',
+					],
 				);
 
 				if ($this->consumerTimer !== null) {
@@ -519,7 +486,7 @@ class Discovery extends Console\Command\Command
 				self::DISCOVERY_WAITING_INTERVAL,
 				async(function (): void {
 					$this->checkAndTerminate();
-				})
+				}),
 			);
 		}
 	}

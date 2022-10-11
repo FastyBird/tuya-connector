@@ -21,6 +21,7 @@ use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Types as MetadataTypes;
 use FastyBird\TuyaConnector\API;
 use FastyBird\TuyaConnector\Consumers;
@@ -33,6 +34,11 @@ use Nette\Utils;
 use Psr\Log;
 use React\EventLoop;
 use Throwable;
+use function array_key_exists;
+use function in_array;
+use function is_array;
+use function is_string;
+use function strval;
 
 /**
  * Local devices client
@@ -48,6 +54,7 @@ final class Local implements Client
 	use Nette\SmartObject;
 
 	private const HANDLER_START_DELAY = 2.0;
+
 	private const HANDLER_PROCESSING_INTERVAL = 0.01;
 
 	private const SENDING_COMMAND_DELAY = 120.0;
@@ -59,7 +66,7 @@ final class Local implements Client
 	/** @var Array<string, API\LocalApi> */
 	private array $devicesClients = [];
 
-	/** @var string[] */
+	/** @var Array<string> */
 	private array $processedDevices = [];
 
 	/** @var Array<string, Array<string, DateTimeInterface|bool>> */
@@ -68,95 +75,30 @@ final class Local implements Client
 	/** @var Array<string, DateTimeInterface> */
 	private array $processedProperties = [];
 
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $handlerTimer = null;
+	private EventLoop\TimerInterface|null $handlerTimer = null;
 
-	/** @var MetadataEntities\Modules\DevicesModule\IConnectorEntity */
-	private MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector;
-
-	/** @var API\LocalApiFactory */
-	private API\LocalApiFactory $localApiFactory;
-
-	/** @var Helpers\Device */
-	private Helpers\Device $deviceHelper;
-
-	/** @var Helpers\Property */
-	private Helpers\Property $propertyStateHelper;
-
-	/** @var Consumers\Messages */
-	private Consumers\Messages $consumer;
-
-	/** @var DevicesModuleModels\DataStorage\IDevicesRepository */
-	private DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelsRepository */
-	private DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelPropertiesRepository */
-	private DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository;
-
-	/** @var DevicesModuleModels\States\DeviceConnectionStateManager */
-	private DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 * @param Helpers\Device $deviceHelper
-	 * @param Helpers\Property $propertyStateHelper
-	 * @param Consumers\Messages $consumer
-	 * @param API\LocalApiFactory $localApiFactory
-	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository
-	 * @param DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
-		Helpers\Device $deviceHelper,
-		Helpers\Property $propertyStateHelper,
-		Consumers\Messages $consumer,
-		API\LocalApiFactory $localApiFactory,
-		DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository,
-		DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository,
-		DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository,
-		DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->connector = $connector;
-
-		$this->localApiFactory = $localApiFactory;
-		$this->deviceHelper = $deviceHelper;
-		$this->propertyStateHelper = $propertyStateHelper;
-		$this->consumer = $consumer;
-
-		$this->devicesRepository = $devicesRepository;
-		$this->channelsRepository = $channelsRepository;
-		$this->channelPropertiesRepository = $channelPropertiesRepository;
-
-		$this->deviceConnectionStateManager = $deviceConnectionStateManager;
-
-		$this->dateTimeFactory = $dateTimeFactory;
-
-		$this->eventLoop = $eventLoop;
-
+		private readonly MetadataEntities\DevicesModule\Connector $connector,
+		private readonly Helpers\Device $deviceHelper,
+		private readonly Helpers\Property $propertyStateHelper,
+		private readonly Consumers\Messages $consumer,
+		private readonly API\LocalApiFactory $localApiFactory,
+		private readonly DevicesModuleModels\DataStorage\DevicesRepository $devicesRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelsRepository $channelsRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelPropertiesRepository $channelPropertiesRepository,
+		private readonly DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		private readonly EventLoop\LoopInterface $eventLoop,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function connect(): void
 	{
@@ -171,13 +113,10 @@ final class Local implements Client
 			self::HANDLER_START_DELAY,
 			function (): void {
 				$this->registerLoopHandler();
-			}
+			},
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function disconnect(): void
 	{
 		foreach ($this->devicesClients as $client) {
@@ -192,15 +131,15 @@ final class Local implements Client
 	}
 
 	/**
-	 * @return void
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
 	private function handleCommunication(): void
 	{
 		foreach ($this->processedProperties as $index => $processedProperty) {
-			if (((float) $this->dateTimeFactory->getNow()->format('Uv') - (float) $processedProperty->format('Uv')) >= 500) {
+			if ((float) $this->dateTimeFactory->getNow()->format('Uv') - (float) $processedProperty->format(
+				'Uv',
+			) >= 500) {
 				unset($this->processedProperties[$index]);
 			}
 		}
@@ -208,7 +147,9 @@ final class Local implements Client
 		foreach ($this->devicesRepository->findAllByConnector($this->connector->getId()) as $device) {
 			if (
 				!in_array($device->getId()->toString(), $this->processedDevices, true)
-				&& !$this->deviceConnectionStateManager->getState($device)->equalsValue(MetadataTypes\ConnectionStateType::STATE_STOPPED)
+				&& !$this->deviceConnectionStateManager->getState($device)->equalsValue(
+					MetadataTypes\ConnectionState::STATE_STOPPED,
+				)
 			) {
 				$this->processedDevices[] = $device->getId()->toString();
 
@@ -226,14 +167,10 @@ final class Local implements Client
 	}
 
 	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
-	private function processDevice(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
+	private function processDevice(MetadataEntities\DevicesModule\Device $deviceItem): bool
 	{
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
 			$this->createDeviceClient($deviceItem);
@@ -247,9 +184,10 @@ final class Local implements Client
 			if (!$client->isConnecting()) {
 				if (
 					$client->getLastConnectAttempt() === null
-					|| ($this->dateTimeFactory->getNow()->getTimestamp() - $client->getLastConnectAttempt()->getTimestamp()) >= self::RECONNECT_COOL_DOWN_TIME
+					||
+						($this->dateTimeFactory->getNow()->getTimestamp() - $client->getLastConnectAttempt()->getTimestamp())
+						>= self::RECONNECT_COOL_DOWN_TIME
 				) {
-					var_dump('RECONNECT');
 					unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
 
 					$client->connect();
@@ -259,7 +197,7 @@ final class Local implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						false
+						false,
 					));
 				}
 			}
@@ -268,7 +206,9 @@ final class Local implements Client
 		}
 
 		if (
-			!$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
+			!$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(
+				MetadataTypes\ConnectionState::STATE_CONNECTED,
+			)
 		) {
 			return true;
 		}
@@ -281,17 +221,13 @@ final class Local implements Client
 	}
 
 	/**
-	 * @param string $cmd
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
 	 * @throws Throwable
 	 */
 	private function readDeviceData(
 		string $cmd,
-		MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	): bool {
+		MetadataEntities\DevicesModule\Device $deviceItem,
+	): bool
+	{
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
 			throw new Exceptions\InvalidState('Device client is not created');
 		}
@@ -330,7 +266,7 @@ final class Local implements Client
 						$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
 							Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 							$status->getCode(),
-							$status->getValue()
+							$status->getValue(),
 						);
 					}
 
@@ -338,30 +274,30 @@ final class Local implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						$dataPointsStatuses
+						$dataPointsStatuses,
 					));
 				})
 				->otherwise(function (Throwable $ex) use ($deviceItem): void {
 					$this->logger->warning(
 						'Could not call local api',
 						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'local-client',
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type' => 'local-client',
 							'exception' => [
 								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
+								'code' => $ex->getCode(),
 							],
 							'connector' => [
 								'id' => $this->connector->getId()->toString(),
 							],
-						]
+						],
 					);
 
 					$this->consumer->append(new Entities\Messages\DeviceState(
 						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						false
+						false,
 					));
 				});
 		}
@@ -370,14 +306,10 @@ final class Local implements Client
 	}
 
 	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
-	private function writeChannelsProperty(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
+	private function writeChannelsProperty(MetadataEntities\DevicesModule\Device $deviceItem): bool
 	{
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->devicesClients)) {
 			throw new Exceptions\InvalidState('Device client is not created');
@@ -386,14 +318,27 @@ final class Local implements Client
 		$now = $this->dateTimeFactory->getNow();
 
 		foreach ($this->channelsRepository->findAllByDevice($deviceItem->getId()) as $channelItem) {
-			foreach ($this->channelPropertiesRepository->findAllByChannel($channelItem->getId(), MetadataEntities\Modules\DevicesModule\ChannelDynamicPropertyEntity::class) as $propertyItem) {
+			foreach ($this->channelPropertiesRepository->findAllByChannel(
+				$channelItem->getId(),
+				MetadataEntities\DevicesModule\ChannelDynamicProperty::class,
+			) as $propertyItem) {
 				if (
 					$propertyItem->isSettable()
 					&& $propertyItem->getExpectedValue() !== null
 					&& $propertyItem->isPending()
 				) {
-					$pending = is_string($propertyItem->getPending()) ? Utils\DateTime::createFromFormat(DateTimeInterface::ATOM, $propertyItem->getPending()) : true;
-					$debounce = array_key_exists($propertyItem->getId()->toString(), $this->processedProperties) ? $this->processedProperties[$propertyItem->getId()->toString()] : false;
+					$pending = is_string($propertyItem->getPending())
+						? Utils\DateTime::createFromFormat(
+							DateTimeInterface::ATOM,
+							$propertyItem->getPending(),
+						)
+						: true;
+					$debounce = array_key_exists(
+						$propertyItem->getId()->toString(),
+						$this->processedProperties,
+					)
+						? $this->processedProperties[$propertyItem->getId()->toString()]
+						: false;
 
 					if (
 						$debounce !== false
@@ -408,52 +353,52 @@ final class Local implements Client
 						$pending === true
 						|| (
 							$pending !== false
-							&& (float) $now->format('Uv') - (float) $pending->format('Uv') > 2000
+							&& (float) $now->format('Uv') - (float) $pending->format('Uv') > 2_000
 						)
 					) {
 						$this->processedProperties[$propertyItem->getId()->toString()] = $now;
 
 						$this->devicesClients[$deviceItem->getId()->toString()]->writeState(
 							$propertyItem->getIdentifier(),
-							$propertyItem->getExpectedValue()
+							$propertyItem->getExpectedValue(),
 						)
 							->then(function () use ($propertyItem): void {
 								$this->propertyStateHelper->setValue(
 									$propertyItem,
 									Utils\ArrayHash::from([
 										'pending' => $this->dateTimeFactory->getNow()->format(DateTimeInterface::ATOM),
-									])
+									]),
 								);
 							})
 							->otherwise(function (Throwable $ex) use ($deviceItem, $propertyItem): void {
 								$this->logger->error(
 									'Could not call local device api',
 									[
-										'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-										'type'      => 'local-client',
+										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+										'type' => 'local-client',
 										'exception' => [
 											'message' => $ex->getMessage(),
-											'code'    => $ex->getCode(),
+											'code' => $ex->getCode(),
 										],
 										'connector' => [
 											'id' => $this->connector->getId()->toString(),
 										],
-									]
+									],
 								);
 
 								$this->propertyStateHelper->setValue(
 									$propertyItem,
 									Utils\ArrayHash::from([
 										'expectedValue' => null,
-										'pending'       => false,
-									])
+										'pending' => false,
+									]),
 								);
 
 								$this->consumer->append(new Entities\Messages\DeviceState(
 									Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 									$this->connector->getId(),
 									$deviceItem->getIdentifier(),
-									false
+									false,
 								));
 
 								unset($this->processedProperties[$propertyItem->getId()->toString()]);
@@ -468,12 +413,7 @@ final class Local implements Client
 		return false;
 	}
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return API\LocalApi
-	 */
-	private function createDeviceClient(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): API\LocalApi
+	private function createDeviceClient(MetadataEntities\DevicesModule\Device $deviceItem): API\LocalApi
 	{
 		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
 
@@ -482,15 +422,15 @@ final class Local implements Client
 			null,
 			strval($this->deviceHelper->getConfiguration(
 				$deviceItem->getId(),
-				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY)
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY),
 			)),
 			strval($this->deviceHelper->getConfiguration(
 				$deviceItem->getId(),
-				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS)
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS),
 			)),
 			Types\DeviceProtocolVersion::get(strval($this->deviceHelper->getConfiguration(
 				$deviceItem->getId(),
-				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION)
+				Types\DevicePropertyIdentifier::get(Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION),
 			))),
 		);
 
@@ -509,7 +449,7 @@ final class Local implements Client
 							$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
 								Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 								$entity->getCode(),
-								$entity->getValue()
+								$entity->getValue(),
 							);
 						}
 					}
@@ -518,10 +458,10 @@ final class Local implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						$dataPointsStatuses
+						$dataPointsStatuses,
 					));
 				}
-			}
+			},
 		);
 
 		$client->on(
@@ -530,24 +470,24 @@ final class Local implements Client
 				$this->logger->debug(
 					'Connected to device',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'local-client',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'local-client',
 						'connector' => [
 							'id' => $this->connector->getId()->toString(),
 						],
-						'device'    => [
+						'device' => [
 							'id' => $deviceItem->getId()->toString(),
 						],
-					]
+					],
 				);
 
 				$this->consumer->append(new Entities\Messages\DeviceState(
 					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 					$this->connector->getId(),
 					$deviceItem->getIdentifier(),
-					true
+					true,
 				));
-			}
+			},
 		);
 
 		$client->on(
@@ -556,28 +496,28 @@ final class Local implements Client
 				$this->logger->warning(
 					'Connection with device failed',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'local-client',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'local-client',
 						'exception' => [
 							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
+							'code' => $ex->getCode(),
 						],
 						'connector' => [
 							'id' => $this->connector->getId()->toString(),
 						],
-						'device'    => [
+						'device' => [
 							'id' => $deviceItem->getId()->toString(),
 						],
-					]
+					],
 				);
 
 				$this->consumer->append(new Entities\Messages\DeviceState(
 					Types\MessageSource::get(Types\MessageSource::SOURCE_LOCAL_API),
 					$this->connector->getId(),
 					$deviceItem->getIdentifier(),
-					false
+					false,
 				));
-			}
+			},
 		);
 
 		$this->devicesClients[$deviceItem->getId()->toString()] = $client;
@@ -585,16 +525,13 @@ final class Local implements Client
 		return $this->devicesClients[$deviceItem->getId()->toString()];
 	}
 
-	/**
-	 * @return void
-	 */
 	private function registerLoopHandler(): void
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
 			function (): void {
 				$this->handleCommunication();
-			}
+			},
 		);
 	}
 

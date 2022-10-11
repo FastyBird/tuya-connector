@@ -27,28 +27,19 @@ class TuyaDevice extends DevicesModuleEntities\Devices\Device
 
 	public const DEVICE_TYPE = 'tuya';
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getType(): string
 	{
 		return self::DEVICE_TYPE;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getDiscriminatorName(): string
 	{
 		return self::DEVICE_TYPE;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	public function getSource(): MetadataTypes\ModuleSourceType|MetadataTypes\PluginSourceType|MetadataTypes\ConnectorSourceType
+	public function getSource(): MetadataTypes\ModuleSource|MetadataTypes\PluginSource|MetadataTypes\ConnectorSource
 	{
-		return MetadataTypes\ConnectorSourceType::get(MetadataTypes\ConnectorSourceType::SOURCE_CONNECTOR_TUYA);
+		return MetadataTypes\ConnectorSource::get(MetadataTypes\ConnectorSource::SOURCE_CONNECTOR_TUYA);
 	}
 
 }

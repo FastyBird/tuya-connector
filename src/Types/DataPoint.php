@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * Data point types
@@ -32,11 +33,9 @@ class DataPoint extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const DATA_POINT_LOCAL = 'local';
+
 	public const DATA_POINT_CLOUD = 'cloud';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

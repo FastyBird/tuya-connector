@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
 use FastyBird\Metadata\Types as MetadataTypes;
+use function strval;
 
 /**
  * Device property identifier types
@@ -32,16 +33,18 @@ class DevicePropertyIdentifier extends Consistence\Enum\Enum
 	/**
 	 * Define device states
 	 */
-	public const IDENTIFIER_IP_ADDRESS = MetadataTypes\DevicePropertyIdentifierType::IDENTIFIER_IP_ADDRESS;
-	public const IDENTIFIER_STATE = MetadataTypes\DevicePropertyIdentifierType::IDENTIFIER_STATE;
+	public const IDENTIFIER_IP_ADDRESS = MetadataTypes\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS;
+
+	public const IDENTIFIER_STATE = MetadataTypes\DevicePropertyIdentifier::IDENTIFIER_STATE;
+
 	public const IDENTIFIER_PROTOCOL_VERSION = 'protocol_version';
+
 	public const IDENTIFIER_LOCAL_KEY = 'local_key';
+
 	public const IDENTIFIER_USER_IDENTIFIER = 'user_identifier';
+
 	public const IDENTIFIER_ENCRYPTED = 'encrypted';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

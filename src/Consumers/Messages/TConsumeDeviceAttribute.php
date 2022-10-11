@@ -25,6 +25,7 @@ use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
 use Ramsey\Uuid;
+use function assert;
 
 /**
  * Device type consumer trait
@@ -34,10 +35,10 @@ use Ramsey\Uuid;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  *
- * @property-read DevicesModuleModels\Devices\IDevicesRepository $devicesRepository
- * @property-read DevicesModuleModels\Devices\Attributes\IAttributesRepository $attributesRepository
- * @property-read DevicesModuleModels\Devices\Attributes\IAttributesManager $attributesManager
- * @property-read DevicesModuleModels\DataStorage\IDeviceAttributesRepository $attributesDataStorageRepository
+ * @property-read DevicesModuleModels\Devices\DevicesRepository $devicesRepository
+ * @property-read DevicesModuleModels\Devices\Attributes\AttributesRepository $attributesRepository
+ * @property-read DevicesModuleModels\Devices\Attributes\AttributesManager $attributesManager
+ * @property-read DevicesModuleModels\DataStorage\DeviceAttributesRepository $attributesDataStorageRepository
  * @property-read Helpers\Database $databaseHelper
  * @property-read Log\LoggerInterface $logger
  */
@@ -45,40 +46,35 @@ trait TConsumeDeviceAttribute
 {
 
 	/**
-	 * @param Uuid\UuidInterface $deviceId
-	 * @param string|null $value
-	 * @param string $identifier
-	 *
-	 * @return void
-	 *
 	 * @throws DBAL\Exception
+	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function setDeviceAttribute(
 		Uuid\UuidInterface $deviceId,
-		?string $value,
-		string $identifier
-	): void {
+		string|null $value,
+		string $identifier,
+	): void
+	{
 		$attributeItem = $this->attributesDataStorageRepository->findByIdentifier(
 			$deviceId,
-			$identifier
+			$identifier,
 		);
 
 		if ($attributeItem !== null && $value === null) {
-			/** @var DevicesModuleEntities\Devices\Attributes\IAttribute|null $attributeEntity */
 			$attributeEntity = $this->databaseHelper->query(
-				function () use ($attributeItem): ?DevicesModuleEntities\Devices\Attributes\IAttribute {
-					$findAttributeQuery = new DevicesModuleQueries\FindDeviceAttributesQuery();
+				function () use ($attributeItem): DevicesModuleEntities\Devices\Attributes\Attribute|null {
+					$findAttributeQuery = new DevicesModuleQueries\FindDeviceAttributes();
 					$findAttributeQuery->byId($attributeItem->getId());
 
 					return $this->attributesRepository->findOneBy($findAttributeQuery);
-				}
+				},
 			);
 
 			if ($attributeEntity !== null) {
 				$this->databaseHelper->transaction(
 					function () use ($attributeEntity): void {
 						$this->attributesManager->delete($attributeEntity);
-					}
+					},
 				);
 			}
 
@@ -94,106 +90,101 @@ trait TConsumeDeviceAttribute
 		}
 
 		if ($attributeItem === null) {
-			/** @var Entities\TuyaDevice|null $deviceEntity */
 			$deviceEntity = $this->databaseHelper->query(
-				function () use ($deviceId): ?Entities\TuyaDevice {
-					$findDeviceQuery = new DevicesModuleQueries\FindDevicesQuery();
+				function () use ($deviceId): Entities\TuyaDevice|null {
+					$findDeviceQuery = new DevicesModuleQueries\FindDevices();
 					$findDeviceQuery->byId($deviceId);
 
-					/** @var Entities\TuyaDevice|null $deviceEntity */
 					$deviceEntity = $this->devicesRepository->findOneBy(
 						$findDeviceQuery,
-						Entities\TuyaDevice::class
+						Entities\TuyaDevice::class,
 					);
+					assert($deviceEntity instanceof Entities\TuyaDevice || $deviceEntity === null);
 
 					return $deviceEntity;
-				}
+				},
 			);
 
 			if ($deviceEntity === null) {
 				return;
 			}
 
-			/** @var DevicesModuleEntities\Devices\Attributes\IAttribute $attributeEntity */
 			$attributeEntity = $this->databaseHelper->transaction(
-				function () use (
-					$deviceEntity,
-					$value,
-					$identifier
-				): DevicesModuleEntities\Devices\Attributes\IAttribute {
-					return $this->attributesManager->create(Utils\ArrayHash::from([
-						'device'     => $deviceEntity,
+				fn (): DevicesModuleEntities\Devices\Attributes\Attribute => $this->attributesManager->create(
+					Utils\ArrayHash::from([
+						'device' => $deviceEntity,
 						'identifier' => $identifier,
-						'content'    => $value,
-					]));
-				}
+						'content' => $value,
+					]),
+				),
 			);
+			assert($attributeEntity instanceof DevicesModuleEntities\Devices\Attributes\Attribute);
 
 			$this->logger->debug(
 				'Device attribute was created',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'message-consumer',
-					'device'    => [
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'message-consumer',
+					'device' => [
 						'id' => $deviceId->toString(),
 					],
 					'attribute' => [
-						'id'         => $attributeEntity->getPlainId(),
+						'id' => $attributeEntity->getPlainId(),
 						'identifier' => $identifier,
 					],
-				]
+				],
 			);
 
 		} else {
-			/** @var DevicesModuleEntities\Devices\Attributes\IAttribute|null $attributeEntity */
 			$attributeEntity = $this->databaseHelper->query(
-				function () use ($attributeItem): ?DevicesModuleEntities\Devices\Attributes\IAttribute {
-					$findAttributeQuery = new DevicesModuleQueries\FindDeviceAttributesQuery();
+				function () use ($attributeItem): DevicesModuleEntities\Devices\Attributes\Attribute|null {
+					$findAttributeQuery = new DevicesModuleQueries\FindDeviceAttributes();
 					$findAttributeQuery->byId($attributeItem->getId());
 
 					return $this->attributesRepository->findOneBy($findAttributeQuery);
-				}
+				},
 			);
 
 			if ($attributeEntity !== null) {
-				/** @var DevicesModuleEntities\Devices\Attributes\IAttribute $attributeEntity */
 				$attributeEntity = $this->databaseHelper->transaction(
-					function () use ($value, $attributeEntity): DevicesModuleEntities\Devices\Attributes\IAttribute {
-						return $this->attributesManager->update($attributeEntity, Utils\ArrayHash::from([
+					fn (): DevicesModuleEntities\Devices\Attributes\Attribute => $this->attributesManager->update(
+						$attributeEntity,
+						Utils\ArrayHash::from([
 							'content' => $value,
-						]));
-					}
+						]),
+					),
 				);
+				assert($attributeEntity instanceof DevicesModuleEntities\Devices\Attributes\Attribute);
 
 				$this->logger->debug(
 					'Device attribute was updated',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'message-consumer',
-						'device'    => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'message-consumer',
+						'device' => [
 							'id' => $deviceId->toString(),
 						],
 						'attribute' => [
-							'id'         => $attributeEntity->getPlainId(),
+							'id' => $attributeEntity->getPlainId(),
 							'identifier' => $identifier,
 						],
-					]
+					],
 				);
 
 			} else {
 				$this->logger->error(
 					'Device attribute could not be updated',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'message-consumer',
-						'device'    => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'message-consumer',
+						'device' => [
 							'id' => $deviceId->toString(),
 						],
 						'attribute' => [
-							'id'         => $attributeItem->getId()->toString(),
+							'id' => $attributeItem->getId()->toString(),
 							'identifier' => $identifier,
 						],
-					]
+					],
 				);
 			}
 		}

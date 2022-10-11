@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * OpenAPI endpoint types
@@ -32,15 +33,17 @@ class OpenApiEndpoint extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const ENDPOINT_CHINA = 'https://openapi.tuyacn.com';
+
 	public const ENDPOINT_AMERICA = 'https://openapi.tuyaus.com';
+
 	public const ENDPOINT_AMERICA_AZURE = 'https://openapi-ueaz.tuyaus.com';
+
 	public const ENDPOINT_EUROPE = 'https://openapi.tuyaeu.com';
+
 	public const ENDPOINT_EUROPE_MS = 'https://openapi-weaz.tuyaeu.com';
+
 	public const ENDPOINT_INDIA = 'https://openapi.tuyain.com';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

@@ -30,50 +30,25 @@ final class UserDeviceDataPointStatus implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $code;
-
-	/** @var string|int|float|bool */
-	private string|int|float|bool $value;
-
-	/** @var string|null */
-	private ?string $type;
-
-	/**
-	 * @param string $code
-	 * @param string|int|float|bool $value
-	 * @param string|null $type
-	 */
 	public function __construct(
-		string $code,
-		string|int|float|bool $value,
-		?string $type
-	) {
-		$this->code = $code;
-		$this->value = $value;
-		$this->type = $type;
+		private readonly string $code,
+		private readonly string|int|float|bool $value,
+		private readonly string|null $type,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getCode(): string
 	{
 		return $this->code;
 	}
 
-	/**
-	 * @return bool|float|int|string
-	 */
 	public function getValue(): float|bool|int|string
 	{
 		return $this->value;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getType(): ?string
+	public function getType(): string|null
 	{
 		return $this->type;
 	}
@@ -84,9 +59,9 @@ final class UserDeviceDataPointStatus implements Entity
 	public function toArray(): array
 	{
 		return [
-			'code'  => $this->getCode(),
+			'code' => $this->getCode(),
 			'value' => $this->getValue(),
-			'type'  => $this->getType(),
+			'type' => $this->getType(),
 		];
 	}
 

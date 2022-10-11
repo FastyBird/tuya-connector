@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Entities\API;
 
 use Nette;
+use function array_map;
 
 /**
  * OpenAPI device specification entity
@@ -30,40 +31,25 @@ final class DeviceSpecification implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $category;
-
-	/** @var DeviceSpecificationFunction[] */
-	private array $functions;
-
-	/** @var DeviceSpecificationStatus[] */
-	private array $status;
-
 	/**
-	 * @param string $category
-	 * @param DeviceSpecificationFunction[] $functions
-	 * @param DeviceSpecificationStatus[] $status
+	 * @param Array<DeviceSpecificationFunction> $functions
+	 * @param Array<DeviceSpecificationStatus> $status
 	 */
 	public function __construct(
-		string $category,
-		array $functions,
-		array $status
-	) {
-		$this->category = $category;
-		$this->functions = $functions;
-		$this->status = $status;
+		private readonly string $category,
+		private readonly array $functions,
+		private readonly array $status,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getCategory(): string
 	{
 		return $this->category;
 	}
 
 	/**
-	 * @return DeviceSpecificationFunction[]
+	 * @return Array<DeviceSpecificationFunction>
 	 */
 	public function getFunctions(): array
 	{
@@ -71,7 +57,7 @@ final class DeviceSpecification implements Entity
 	}
 
 	/**
-	 * @return DeviceSpecificationStatus[]
+	 * @return Array<DeviceSpecificationStatus>
 	 */
 	public function getStatus(): array
 	{
@@ -84,13 +70,15 @@ final class DeviceSpecification implements Entity
 	public function toArray(): array
 	{
 		return [
-			'category'  => $this->getCategory(),
-			'functions' => array_map(function (DeviceSpecificationFunction $item): array {
-				return $item->toArray();
-			}, $this->getFunctions()),
-			'status'    => array_map(function (DeviceSpecificationStatus $item): array {
-				return $item->toArray();
-			}, $this->getStatus()),
+			'category' => $this->getCategory(),
+			'functions' => array_map(
+				static fn (DeviceSpecificationFunction $item): array => $item->toArray(),
+				$this->getFunctions(),
+			),
+			'status' => array_map(
+				static fn (DeviceSpecificationStatus $item): array => $item->toArray(),
+				$this->getStatus(),
+			),
 		];
 	}
 

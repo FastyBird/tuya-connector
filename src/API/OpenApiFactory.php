@@ -22,6 +22,7 @@ use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Psr\Log;
+use function strval;
 
 /**
  * OpenAPI API factory
@@ -34,53 +35,24 @@ use Psr\Log;
 final class OpenApiFactory
 {
 
-	/** @var EntityFactory */
-	private EntityFactory $entityFactory;
-
-	/** @var Helpers\Connector */
-	private Helpers\Connector $connectorHelper;
-
-	/** @var MetadataSchemas\IValidator */
-	private MetadataSchemas\IValidator $schemaValidator;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param EntityFactory $entityFactory
-	 * @param Helpers\Connector $connectorHelper
-	 * @param MetadataSchemas\IValidator $schemaValidator
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		EntityFactory $entityFactory,
-		Helpers\Connector $connectorHelper,
-		MetadataSchemas\IValidator $schemaValidator,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->entityFactory = $entityFactory;
-		$this->connectorHelper = $connectorHelper;
-		$this->schemaValidator = $schemaValidator;
-		$this->dateTimeFactory = $dateTimeFactory;
-
+		private readonly EntityFactory $entityFactory,
+		private readonly Helpers\Connector $connectorHelper,
+		private readonly MetadataSchemas\Validator $schemaValidator,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 *
-	 * @return OpenApi
-	 */
-	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): OpenApi
+	public function create(MetadataEntities\DevicesModule\Connector $connector): OpenApi
 	{
 		$endpoint = $this->connectorHelper->getConfiguration(
 			$connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENAPI_ENDPOINT)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENAPI_ENDPOINT),
 		);
 
 		if (!Types\OpenApiEndpoint::isValidValue($endpoint)) {
@@ -89,12 +61,12 @@ final class OpenApiFactory
 
 		$accessId = $this->connectorHelper->getConfiguration(
 			$connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID),
 		);
 
 		$accessSecret = $this->connectorHelper->getConfiguration(
 			$connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET),
 		);
 
 		return new OpenApi(
@@ -105,7 +77,7 @@ final class OpenApiFactory
 			$this->entityFactory,
 			$this->schemaValidator,
 			$this->dateTimeFactory,
-			$this->logger
+			$this->logger,
 		);
 	}
 

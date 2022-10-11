@@ -30,49 +30,24 @@ final class DeviceSpecificationFunction implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $code;
-
-	/** @var string */
-	private string $type;
-
-	/** @var string */
-	private string $values;
-
-	/**
-	 * @param string $code
-	 * @param string $type
-	 * @param string $values
-	 */
 	public function __construct(
-		string $code,
-		string $type,
-		string $values
-	) {
-		$this->code = $code;
-		$this->type = $type;
-		$this->values = $values;
+		private readonly string $code,
+		private readonly string $type,
+		private readonly string $values,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getCode(): string
 	{
 		return $this->code;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getType(): string
 	{
 		return $this->type;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getValues(): string
 	{
 		return $this->values;
@@ -84,8 +59,8 @@ final class DeviceSpecificationFunction implements Entity
 	public function toArray(): array
 	{
 		return [
-			'code'   => $this->getCode(),
-			'type'   => $this->getType(),
+			'code' => $this->getCode(),
+			'type' => $this->getType(),
 			'values' => $this->getValues(),
 		];
 	}

@@ -28,9 +28,6 @@ use FastyBird\TuyaConnector\Types;
 interface Entity
 {
 
-	/**
-	 * @return Types\MessageSource
-	 */
 	public function getSource(): Types\MessageSource;
 
 	/**

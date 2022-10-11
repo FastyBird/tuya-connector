@@ -17,9 +17,13 @@ namespace FastyBird\TuyaConnector\Helpers;
 
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\TuyaConnector\Types;
 use Nette;
 use Ramsey\Uuid;
+use function is_bool;
+use function is_string;
+use function strval;
 
 /**
  * Useful device helpers
@@ -34,46 +38,34 @@ final class Device
 
 	use Nette\SmartObject;
 
-	/** @var DevicesModuleModels\DataStorage\IDevicePropertiesRepository */
-	private DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesRepository;
-
-	/**
-	 * @param DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesRepository
-	 */
 	public function __construct(
-		DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesRepository
-	) {
-		$this->propertiesRepository = $propertiesRepository;
+		private readonly DevicesModuleModels\DataStorage\DevicePropertiesRepository $propertiesRepository,
+	)
+	{
 	}
 
 	/**
-	 * @param Uuid\UuidInterface $deviceId
-	 * @param Types\DevicePropertyIdentifier $type
-	 *
-	 * @return float|bool|int|string|null
+	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function getConfiguration(
 		Uuid\UuidInterface $deviceId,
-		Types\DevicePropertyIdentifier $type
-	): float|bool|int|string|null {
+		Types\DevicePropertyIdentifier $type,
+	): float|bool|int|string|null
+	{
 		$configuration = $this->propertiesRepository->findByIdentifier($deviceId, strval($type->getValue()));
 
-		if ($configuration instanceof MetadataEntities\Modules\DevicesModule\IDeviceStaticPropertyEntity) {
+		if ($configuration instanceof MetadataEntities\DevicesModule\DeviceVariableProperty) {
 			if ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS) {
 				return is_string($configuration->getValue()) ? $configuration->getValue() : null;
-
 			} elseif (
 				$type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION
 				&& !Types\DeviceProtocolVersion::isValidValue($configuration->getValue())
 			) {
 				return Types\DeviceProtocolVersion::VERSION_V33;
-
 			} elseif ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY) {
 				return is_string($configuration->getValue()) ? $configuration->getValue() : null;
-
 			} elseif ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_USER_IDENTIFIER) {
 				return is_string($configuration->getValue()) ? $configuration->getValue() : null;
-
 			} elseif ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_ENCRYPTED) {
 				return is_bool($configuration->getValue()) ? $configuration->getValue() : false;
 			}

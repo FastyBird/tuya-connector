@@ -21,6 +21,9 @@ use Nette;
 use Psr\Log;
 use SplObjectStorage;
 use SplQueue;
+use function assert;
+use function count;
+use function sprintf;
 
 /**
  * Clients message consumer proxy
@@ -41,17 +44,16 @@ final class Messages
 	/** @var SplQueue<Entities\Messages\Entity> */
 	private SplQueue $queue;
 
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
 	/**
-	 * @param Consumer[] $consumers
-	 * @param Log\LoggerInterface|null $logger
+	 * @param Array<Consumer> $consumers
 	 */
 	public function __construct(
 		array $consumers,
-		?Log\LoggerInterface $logger = null
-	) {
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->consumers = new SplObjectStorage();
 		$this->queue = new SplQueue();
 
@@ -65,16 +67,11 @@ final class Messages
 			sprintf('Registered %d messages consumers', count($this->consumers)),
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'consumer',
-			]
+				'type' => 'consumer',
+			],
 		);
 	}
 
-	/**
-	 * @param Entities\Messages\Entity $entity
-	 *
-	 * @return void
-	 */
 	public function append(Entities\Messages\Entity $entity): void
 	{
 		$this->queue->enqueue($entity);
@@ -82,16 +79,13 @@ final class Messages
 		$this->logger->debug(
 			'Appended new message into consumers queue',
 			[
-				'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'    => 'consumer',
+				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type' => 'consumer',
 				'message' => $entity->toArray(),
-			]
+			],
 		);
 	}
 
-	/**
-	 * @return void
-	 */
 	public function consume(): void
 	{
 		$this->queue->rewind();
@@ -107,8 +101,8 @@ final class Messages
 				'No consumer is registered, messages could not be consumed',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'consumer',
-				]
+					'type' => 'consumer',
+				],
 			);
 
 			return;
@@ -116,8 +110,8 @@ final class Messages
 
 		$entity = $this->queue->dequeue();
 
-		/** @var Consumer $consumer */
 		foreach ($this->consumers as $consumer) {
+			assert($consumer instanceof Consumer);
 			if ($consumer->consume($entity) === true) {
 				return;
 			}
@@ -126,16 +120,13 @@ final class Messages
 		$this->logger->error(
 			'Message could not be consumed',
 			[
-				'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'    => 'consumer',
+				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type' => 'consumer',
 				'message' => $entity->toArray(),
-			]
+			],
 		);
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isEmpty(): bool
 	{
 		return $this->queue->isEmpty();

@@ -27,6 +27,7 @@ use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
 use Psr\Log;
+use function assert;
 
 /**
  * Cloud device discovery message consumer
@@ -43,121 +44,34 @@ final class CloudDiscovery implements Consumer
 	use TConsumeDeviceProperty;
 	use TConsumeDeviceAttribute;
 
-	/** @var DevicesModuleModels\Connectors\IConnectorsRepository */
-	private DevicesModuleModels\Connectors\IConnectorsRepository $connectorsRepository;
-
-	/** @var DevicesModuleModels\Devices\IDevicesRepository */
-	private DevicesModuleModels\Devices\IDevicesRepository $devicesRepository;
-
-	/** @var DevicesModuleModels\Devices\IDevicesManager */
-	private DevicesModuleModels\Devices\IDevicesManager $devicesManager;
-
-	/** @var DevicesModuleModels\Devices\Properties\IPropertiesRepository */
-	private DevicesModuleModels\Devices\Properties\IPropertiesRepository $propertiesRepository;
-
-	/** @var DevicesModuleModels\Devices\Properties\IPropertiesManager */
-	private DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager;
-
-	/** @var DevicesModuleModels\Devices\Attributes\IAttributesRepository */
-	private DevicesModuleModels\Devices\Attributes\IAttributesRepository $attributesRepository;
-
-	/** @var DevicesModuleModels\Devices\Attributes\IAttributesManager */
-	private DevicesModuleModels\Devices\Attributes\IAttributesManager $attributesManager;
-
-	/** @var DevicesModuleModels\Channels\IChannelsRepository */
-	private DevicesModuleModels\Channels\IChannelsRepository $channelsRepository;
-
-	/** @var DevicesModuleModels\Channels\IChannelsManager */
-	private DevicesModuleModels\Channels\IChannelsManager $channelsManager;
-
-	/** @var DevicesModuleModels\Channels\Properties\IPropertiesRepository */
-	private DevicesModuleModels\Channels\Properties\IPropertiesRepository $channelsPropertiesRepository;
-
-	/** @var DevicesModuleModels\Channels\Properties\IPropertiesManager */
-	private DevicesModuleModels\Channels\Properties\IPropertiesManager $channelsPropertiesManager;
-
-	/** @var DevicesModuleModels\DataStorage\IDevicesRepository */
-	private DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IDevicePropertiesRepository */
-	private DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesDataStorageRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IDeviceAttributesRepository */
-	private DevicesModuleModels\DataStorage\IDeviceAttributesRepository $attributesDataStorageRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelPropertiesRepository */
-	private DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelsPropertiesDataStorageRepository;
-
-	/** @var Helpers\Database */
-	private Helpers\Database $databaseHelper;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param DevicesModuleModels\Connectors\IConnectorsRepository $connectorsRepository
-	 * @param DevicesModuleModels\Devices\IDevicesRepository $devicesRepository
-	 * @param DevicesModuleModels\Devices\IDevicesManager $devicesManager
-	 * @param DevicesModuleModels\Devices\Properties\IPropertiesRepository $propertiesRepository
-	 * @param DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager
-	 * @param DevicesModuleModels\Devices\Attributes\IAttributesRepository $attributesRepository
-	 * @param DevicesModuleModels\Devices\Attributes\IAttributesManager $attributesManager
-	 * @param DevicesModuleModels\Channels\IChannelsRepository $channelsRepository
-	 * @param DevicesModuleModels\Channels\IChannelsManager $channelsManager
-	 * @param DevicesModuleModels\Channels\Properties\IPropertiesRepository $channelsPropertiesRepository
-	 * @param DevicesModuleModels\Channels\Properties\IPropertiesManager $channelsPropertiesManager
-	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository
-	 * @param DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesDataStorageRepository
-	 * @param DevicesModuleModels\DataStorage\IDeviceAttributesRepository $attributesDataStorageRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelsPropertiesDataStorageRepository
-	 * @param Helpers\Database $databaseHelper
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		DevicesModuleModels\Connectors\IConnectorsRepository $connectorsRepository,
-		DevicesModuleModels\Devices\IDevicesRepository $devicesRepository,
-		DevicesModuleModels\Devices\IDevicesManager $devicesManager,
-		DevicesModuleModels\Devices\Properties\IPropertiesRepository $propertiesRepository,
-		DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager,
-		DevicesModuleModels\Devices\Attributes\IAttributesRepository $attributesRepository,
-		DevicesModuleModels\Devices\Attributes\IAttributesManager $attributesManager,
-		DevicesModuleModels\Channels\IChannelsRepository $channelsRepository,
-		DevicesModuleModels\Channels\IChannelsManager $channelsManager,
-		DevicesModuleModels\Channels\Properties\IPropertiesRepository $channelsPropertiesRepository,
-		DevicesModuleModels\Channels\Properties\IPropertiesManager $channelsPropertiesManager,
-		DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository,
-		DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesDataStorageRepository,
-		DevicesModuleModels\DataStorage\IDeviceAttributesRepository $attributesDataStorageRepository,
-		DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelsPropertiesDataStorageRepository,
-		Helpers\Database $databaseHelper,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->connectorsRepository = $connectorsRepository;
-		$this->devicesRepository = $devicesRepository;
-		$this->devicesManager = $devicesManager;
-		$this->propertiesRepository = $propertiesRepository;
-		$this->propertiesManager = $propertiesManager;
-		$this->attributesRepository = $attributesRepository;
-		$this->attributesManager = $attributesManager;
-		$this->channelsRepository = $channelsRepository;
-		$this->channelsManager = $channelsManager;
-		$this->channelsPropertiesRepository = $channelsPropertiesRepository;
-		$this->channelsPropertiesManager = $channelsPropertiesManager;
-
-		$this->devicesDataStorageRepository = $devicesDataStorageRepository;
-		$this->propertiesDataStorageRepository = $propertiesDataStorageRepository;
-		$this->attributesDataStorageRepository = $attributesDataStorageRepository;
-		$this->channelsPropertiesDataStorageRepository = $channelsPropertiesDataStorageRepository;
-
-		$this->databaseHelper = $databaseHelper;
-
+		private readonly DevicesModuleModels\Connectors\ConnectorsRepository $connectorsRepository,
+		private readonly DevicesModuleModels\Devices\DevicesRepository $devicesRepository,
+		private readonly DevicesModuleModels\Devices\DevicesManager $devicesManager,
+		private readonly DevicesModuleModels\Devices\Properties\PropertiesRepository $propertiesRepository,
+		private readonly DevicesModuleModels\Devices\Properties\PropertiesManager $propertiesManager,
+		private readonly DevicesModuleModels\Devices\Attributes\AttributesRepository $attributesRepository,
+		private readonly DevicesModuleModels\Devices\Attributes\AttributesManager $attributesManager,
+		private readonly DevicesModuleModels\Channels\ChannelsRepository $channelsRepository,
+		private readonly DevicesModuleModels\Channels\ChannelsManager $channelsManager,
+		private readonly DevicesModuleModels\Channels\Properties\PropertiesRepository $channelsPropertiesRepository,
+		private readonly DevicesModuleModels\Channels\Properties\PropertiesManager $channelsPropertiesManager,
+		private readonly DevicesModuleModels\DataStorage\DevicesRepository $devicesDataStorageRepository,
+		private readonly DevicesModuleModels\DataStorage\DevicePropertiesRepository $propertiesDataStorageRepository,
+		private readonly DevicesModuleModels\DataStorage\DeviceAttributesRepository $attributesDataStorageRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelPropertiesRepository $channelsPropertiesDataStorageRepository,
+		private readonly Helpers\Database $databaseHelper,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
 	/**
-	 * {@inheritDoc}
-	 *
 	 * @throws DBAL\Exception
+	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	public function consume(Entities\Messages\Entity $entity): bool
 	{
@@ -167,97 +81,95 @@ final class CloudDiscovery implements Consumer
 
 		$deviceItem = $this->devicesDataStorageRepository->findByIdentifier(
 			$entity->getConnector(),
-			$entity->getId()
+			$entity->getId(),
 		);
 
 		if ($deviceItem === null) {
-			/** @var Entities\TuyaConnector|null $connectorEntity */
 			$connectorEntity = $this->databaseHelper->query(
-				function () use ($entity): ?Entities\TuyaConnector {
-					$findConnectorQuery = new DevicesModuleQueries\FindConnectorsQuery();
+				function () use ($entity): Entities\TuyaConnector|null {
+					$findConnectorQuery = new DevicesModuleQueries\FindConnectors();
 					$findConnectorQuery->byId($entity->getConnector());
 
-					/** @var Entities\TuyaConnector|null $connector */
 					$connector = $this->connectorsRepository->findOneBy(
 						$findConnectorQuery,
-						Entities\TuyaConnector::class
+						Entities\TuyaConnector::class,
 					);
+					assert($connector instanceof Entities\TuyaConnector || $connector === null);
 
 					return $connector;
-				}
+				},
 			);
 
 			if ($connectorEntity === null) {
 				return true;
 			}
 
-			/** @var Entities\TuyaDevice $deviceEntity */
 			$deviceEntity = $this->databaseHelper->transaction(
 				function () use ($entity, $connectorEntity): Entities\TuyaDevice {
-					/** @var Entities\TuyaDevice $deviceEntity */
 					$deviceEntity = $this->devicesManager->create(Utils\ArrayHash::from([
-						'entity'     => Entities\TuyaDevice::class,
-						'connector'  => $connectorEntity,
+						'entity' => Entities\TuyaDevice::class,
+						'connector' => $connectorEntity,
 						'identifier' => $entity->getId(),
-						'name'       => $entity->getName(),
+						'name' => $entity->getName(),
 					]));
+					assert($deviceEntity instanceof Entities\TuyaDevice);
 
 					return $deviceEntity;
-				}
+				},
 			);
+			assert($deviceEntity instanceof Entities\TuyaDevice);
 
 			$this->logger->info(
 				'Creating new device',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-discovery-message-consumer',
+					'type' => 'cloud-discovery-message-consumer',
 					'device' => [
-						'id'         => $deviceEntity->getPlainId(),
+						'id' => $deviceEntity->getPlainId(),
 						'identifier' => $entity->getId(),
-						'address'    => $entity->getIpAddress(),
-						'name'       => $entity->getName(),
+						'address' => $entity->getIpAddress(),
+						'name' => $entity->getName(),
 					],
-				]
+				],
 			);
 		} else {
-			/** @var Entities\TuyaDevice|null $deviceEntity */
 			$deviceEntity = $this->databaseHelper->query(
-				function () use ($deviceItem): ?Entities\TuyaDevice {
-					$findDeviceQuery = new DevicesModuleQueries\FindDevicesQuery();
+				function () use ($deviceItem): Entities\TuyaDevice|null {
+					$findDeviceQuery = new DevicesModuleQueries\FindDevices();
 					$findDeviceQuery->byId($deviceItem->getId());
 
-					/** @var Entities\TuyaDevice|null $deviceEntity */
 					$deviceEntity = $this->devicesRepository->findOneBy(
 						$findDeviceQuery,
-						Entities\TuyaDevice::class
+						Entities\TuyaDevice::class,
 					);
+					assert($deviceEntity instanceof Entities\TuyaDevice || $deviceEntity === null);
 
 					return $deviceEntity;
-				}
+				},
 			);
 
 			if ($deviceEntity !== null) {
-				/** @var Entities\TuyaDevice $deviceEntity */
 				$deviceEntity = $this->databaseHelper->transaction(
 					function () use ($entity, $deviceEntity): Entities\TuyaDevice {
-						/** @var Entities\TuyaDevice $deviceEntity */
 						$deviceEntity = $this->devicesManager->update($deviceEntity, Utils\ArrayHash::from([
 							'name' => $entity->getName(),
 						]));
+						assert($deviceEntity instanceof Entities\TuyaDevice);
 
 						return $deviceEntity;
-					}
+					},
 				);
+				assert($deviceEntity instanceof Entities\TuyaDevice);
 
 				$this->logger->debug(
 					'Device was updated',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'cloud-discovery-message-consumer',
+						'type' => 'cloud-discovery-message-consumer',
 						'device' => [
 							'id' => $deviceEntity->getPlainId(),
 						],
-					]
+					],
 				);
 
 			} else {
@@ -265,11 +177,11 @@ final class CloudDiscovery implements Consumer
 					'Device could not be updated',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'cloud-discovery-message-consumer',
+						'type' => 'cloud-discovery-message-consumer',
 						'device' => [
 							'id' => $deviceItem->getId()->toString(),
 						],
-					]
+					],
 				);
 
 				return false;
@@ -278,7 +190,7 @@ final class CloudDiscovery implements Consumer
 
 		$deviceItem = $this->devicesDataStorageRepository->findByIdentifier(
 			$entity->getConnector(),
-			$entity->getId()
+			$entity->getId(),
 		);
 
 		if ($deviceItem === null) {
@@ -286,12 +198,12 @@ final class CloudDiscovery implements Consumer
 				'Newly created device could not be loaded',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-discovery-message-consumer',
+					'type' => 'cloud-discovery-message-consumer',
 					'device' => [
 						'identifier' => $entity->getId(),
-						'address'    => $entity->getIpAddress(),
+						'address' => $entity->getIpAddress(),
 					],
-				]
+				],
 			);
 
 			return true;
@@ -300,31 +212,31 @@ final class CloudDiscovery implements Consumer
 		$this->setDeviceProperty(
 			$deviceItem->getId(),
 			$entity->getLocalKey(),
-			Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY
+			Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY,
 		);
 		$this->setDeviceProperty(
 			$deviceItem->getId(),
 			$entity->getIpAddress(),
-			Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS
+			Types\DevicePropertyIdentifier::IDENTIFIER_IP_ADDRESS,
 		);
 		$this->setDeviceAttribute(
 			$deviceItem->getId(),
 			$entity->getModel(),
-			Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MODEL
+			Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MODEL,
 		);
 		$this->setDeviceAttribute(
 			$deviceItem->getId(),
 			$entity->getMac(),
-			Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MAC_ADDRESS
+			Types\DeviceAttributeIdentifier::IDENTIFIER_HARDWARE_MAC_ADDRESS,
 		);
 		$this->setDeviceAttribute(
 			$deviceItem->getId(),
 			$entity->getSn(),
-			Types\DeviceAttributeIdentifier::IDENTIFIER_SERIAL_NUMBER
+			Types\DeviceAttributeIdentifier::IDENTIFIER_SERIAL_NUMBER,
 		);
 
 		$this->databaseHelper->transaction(function () use ($entity, $deviceEntity): bool {
-			$findChannelQuery = new DevicesModuleQueries\FindChannelsQuery();
+			$findChannelQuery = new DevicesModuleQueries\FindChannels();
 			$findChannelQuery->byIdentifier(Types\DataPoint::DATA_POINT_CLOUD);
 			$findChannelQuery->forDevice($deviceEntity);
 
@@ -332,76 +244,76 @@ final class CloudDiscovery implements Consumer
 
 			if ($channelEntity === null) {
 				$channelEntity = $this->channelsManager->create(Utils\ArrayHash::from([
-					'device'     => $deviceEntity,
+					'device' => $deviceEntity,
 					'identifier' => Types\DataPoint::DATA_POINT_CLOUD,
 				]));
 
 				$this->logger->debug(
 					'Creating new device channel',
 					[
-						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'    => 'cloud-discovery-message-consumer',
-						'device'  => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'cloud-discovery-message-consumer',
+						'device' => [
 							'id' => $deviceEntity->getPlainId(),
 						],
 						'channel' => [
 							'id' => $channelEntity->getPlainId(),
 						],
-					]
+					],
 				);
 			}
 
 			foreach ($entity->getDataPoints() as $dataPoint) {
 				$propertyItem = $this->channelsPropertiesDataStorageRepository->findByIdentifier(
 					$channelEntity->getId(),
-					$dataPoint->getCode()
+					$dataPoint->getCode(),
 				);
 
 				if ($propertyItem === null) {
 					$this->channelsPropertiesManager->create(Utils\ArrayHash::from([
-						'channel'    => $channelEntity,
-						'entity'     => DevicesModuleEntities\Channels\Properties\DynamicProperty::class,
+						'channel' => $channelEntity,
+						'entity' => DevicesModuleEntities\Channels\Properties\Dynamic::class,
 						'identifier' => $dataPoint->getCode(),
-						'name'       => $dataPoint->getCode(),
-						'dataType'   => $dataPoint->getDataType(),
-						'unit'       => $dataPoint->getUnit(),
-						'format'     => $dataPoint->getFormat(),
-						'queryable'  => $dataPoint->isQueryable(),
-						'settable'   => $dataPoint->isSettable(),
+						'name' => $dataPoint->getCode(),
+						'dataType' => $dataPoint->getDataType(),
+						'unit' => $dataPoint->getUnit(),
+						'format' => $dataPoint->getFormat(),
+						'queryable' => $dataPoint->isQueryable(),
+						'settable' => $dataPoint->isSettable(),
 					]));
 
 				} else {
-					$findPropertyQuery = new DevicesModuleQueries\FindChannelPropertiesQuery();
+					$findPropertyQuery = new DevicesModuleQueries\FindChannelProperties();
 					$findPropertyQuery->byId($propertyItem->getId());
 
 					$propertyEntity = $this->channelsPropertiesRepository->findOneBy($findPropertyQuery);
 
 					if ($propertyEntity !== null) {
 						$this->channelsPropertiesManager->update($propertyEntity, Utils\ArrayHash::from([
-							'name'      => $propertyEntity->getName() ?? $dataPoint->getCode(),
-							'dataType'  => $dataPoint->getDataType(),
-							'unit'      => $dataPoint->getUnit(),
-							'format'    => $dataPoint->getFormat(),
+							'name' => $propertyEntity->getName() ?? $dataPoint->getCode(),
+							'dataType' => $dataPoint->getDataType(),
+							'unit' => $dataPoint->getUnit(),
+							'format' => $dataPoint->getFormat(),
 							'queryable' => $dataPoint->isQueryable(),
-							'settable'  => $dataPoint->isSettable(),
+							'settable' => $dataPoint->isSettable(),
 						]));
 
 					} else {
 						$this->logger->error(
 							'Channel property could not be updated',
 							[
-								'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'     => 'cloud-discovery-message-consumer',
-								'device'   => [
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type' => 'cloud-discovery-message-consumer',
+								'device' => [
 									'id' => $channelEntity->getDevice()->getId()->toString(),
 								],
-								'channel'  => [
+								'channel' => [
 									'id' => $channelEntity->getId()->toString(),
 								],
 								'property' => [
 									'id' => $propertyItem->getId(),
 								],
-							]
+							],
 						);
 					}
 				}
@@ -414,12 +326,12 @@ final class CloudDiscovery implements Consumer
 			'Consumed device found message',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'cloud-discovery-message-consumer',
+				'type' => 'cloud-discovery-message-consumer',
 				'device' => [
 					'id' => $deviceItem->getId()->toString(),
 				],
-				'data'   => $entity->toArray(),
-			]
+				'data' => $entity->toArray(),
+			],
 		);
 
 		return true;

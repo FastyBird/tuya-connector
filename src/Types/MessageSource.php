@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * Message client source types
@@ -32,14 +33,15 @@ class MessageSource extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const SOURCE_LOCAL_API = 'local_api';
+
 	public const SOURCE_CLOUD_OPENAPI = 'cloud_openapi';
+
 	public const SOURCE_CLOUD_OPENPULSAR = 'cloud_openpulsar';
+
 	public const SOURCE_LOCAL_DISCOVERY = 'local_discovery';
+
 	public const SOURCE_CLOUD_DISCOVERY = 'cloud_discovery';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

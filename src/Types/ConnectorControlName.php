@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
 use FastyBird\Metadata\Types as MetadataTypes;
+use function strval;
 
 /**
  * Connector control name types
@@ -33,11 +34,9 @@ class ConnectorControlName extends Consistence\Enum\Enum
 	 * Define device states
 	 */
 	public const NAME_DISCOVER = 'discover';
-	public const NAME_REBOOT = MetadataTypes\ControlNameType::NAME_REBOOT;
 
-	/**
-	 * @return string
-	 */
+	public const NAME_REBOOT = MetadataTypes\ControlName::NAME_REBOOT;
+
 	public function __toString(): string
 	{
 		return strval(self::getValue());

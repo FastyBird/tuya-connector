@@ -30,35 +30,15 @@ final class Sign implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $sign;
-
-	/** @var int */
-	private int $timestamp;
-
-	/**
-	 * @param string $sign
-	 * @param int $timestamp
-	 */
-	public function __construct(
-		string $sign,
-		int $timestamp
-	) {
-		$this->sign = $sign;
-		$this->timestamp = $timestamp;
+	public function __construct(private readonly string $sign, private readonly int $timestamp)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getSign(): string
 	{
 		return $this->sign;
 	}
 
-	/**
-	 * @return int
-	 */
 	public function getTimestamp(): int
 	{
 		return $this->timestamp;
@@ -70,7 +50,7 @@ final class Sign implements Entity
 	public function toArray(): array
 	{
 		return [
-			'sign'      => $this->getSign(),
+			'sign' => $this->getSign(),
 			'timestamp' => $this->getTimestamp(),
 		];
 	}

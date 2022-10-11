@@ -29,6 +29,18 @@ use Psr\Http\Message;
 use Psr\Log;
 use React\Promise;
 use Throwable;
+use function boolval;
+use function count;
+use function hash;
+use function hash_hmac;
+use function http_build_query;
+use function implode;
+use function intval;
+use function is_array;
+use function sprintf;
+use function strval;
+use function urldecode;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * OpenAPI interface
@@ -45,108 +57,83 @@ final class OpenApi
 
 	private const VERSION = '0.1.0';
 
-	private const TUYA_ERROR_CODE_TOKEN_INVALID = 1010;
+	private const TUYA_ERROR_CODE_TOKEN_INVALID = 1_010;
 
 	private const ACCESS_TOKEN_API_ENDPOINT = '/v1.0/token';
+
 	private const REFRESH_TOKEN_API_ENDPOINT = '/v1.0/token/%s';
 
 	private const USER_DEVICES_API_ENDPOINT = '/v1.0/users/%s/devices';
+
 	private const USER_DEVICE_DETAIL_API_ENDPOINT = '/v1.0/devices/%s';
+
 	private const USER_DEVICES_FACTORY_INFOS_API_ENDPOINT = '/v1.0/devices/factory-infos';
+
 	private const USER_DEVICE_SPECIFICATIONS_API_ENDPOINT = '/v1.0/devices/%s/specifications';
+
 	private const USER_DEVICE_STATUS_API_ENDPOINT = '/v1.0/devices/%s/status';
 
 	private const DEVICES_API_ENDPOINT = '/v1.2/iot-03/devices';
+
 	private const DEVICES_FACTORY_INFOS_API_ENDPOINT = '/v1.0/iot-03/devices/factory-infos';
+
 	private const DEVICE_INFORMATION_API_ENDPOINT = '/v1.1/iot-03/devices/%s';
+
 	private const DEVICE_SPECIFICATION_API_ENDPOINT = '/v1.2/iot-03/devices/%s/specification';
+
 	private const DEVICE_STATUS_API_ENDPOINT = '/v1.0/iot-03/devices/%s/status';
+
 	private const DEVICE_SEND_COMMAND_API_ENDPOINT = '/v1.0/iot-03/devices/%s/commands';
 
 	public const ACCESS_TOKEN_MESSAGE_SCHEMA_FILENAME = 'openapi_access_token.json';
+
 	public const REFRESH_TOKEN_MESSAGE_SCHEMA_FILENAME = 'openapi_refresh_token.json';
 
 	public const USER_DEVICES_MESSAGE_SCHEMA_FILENAME = 'openapi_user_devices.json';
+
 	public const USER_DEVICE_DETAIL_MESSAGE_SCHEMA_FILENAME = 'openapi_user_device_detail.json';
+
 	public const USER_DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME = 'openapi_user_devices_factory_infos.json';
+
 	public const USER_DEVICE_SPECIFICATIONS_MESSAGE_SCHEMA_FILENAME = 'openapi_user_device_specifications.json';
+
 	public const USER_DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME = 'openapi_user_device_status.json';
 
 	public const DEVICES_MESSAGE_SCHEMA_FILENAME = 'openapi_devices.json';
+
 	public const DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME = 'openapi_devices_factory_infos.json';
+
 	public const DEVICE_INFORMATION_MESSAGE_SCHEMA_FILENAME = 'openapi_device_info.json';
+
 	public const DEVICE_SPECIFICATION_MESSAGE_SCHEMA_FILENAME = 'openapi_device_specification.json';
+
 	public const DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME = 'openapi_device_status.json';
+
 	public const DEVICE_SEND_COMMAND_MESSAGE_SCHEMA_FILENAME = 'openapi_device_send_command.json';
 
-	/** @var Types\OpenApiEndpoint */
-	private Types\OpenApiEndpoint $endpoint;
-
-	/** @var string */
-	private string $accessId;
-
-	/** @var string */
-	private string $accessSecret;
-
-	/** @var string */
-	private string $lang;
-
-	/** @var string */
 	private string $devChannel = 'fastybird_iot';
 
-	/** @var Entities\API\TuyaTokenInfo|null */
-	private ?Entities\API\TuyaTokenInfo $tokenInfo = null;
+	private Entities\API\TuyaTokenInfo|null $tokenInfo = null;
 
-	/** @var EntityFactory */
-	private EntityFactory $entityFactory;
+	private GuzzleHttp\Client|null $client = null;
 
-	/** @var MetadataSchemas\IValidator */
-	private MetadataSchemas\IValidator $schemaValidator;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var GuzzleHttp\Client|null */
-	private ?GuzzleHttp\Client $client = null;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param string $accessId
-	 * @param string $accessSecret
-	 * @param string $lang
-	 * @param Types\OpenApiEndpoint $endpoint
-	 * @param EntityFactory $entityFactory
-	 * @param MetadataSchemas\IValidator $schemaValidator
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		string $accessId,
-		string $accessSecret,
-		string $lang,
-		Types\OpenApiEndpoint $endpoint,
-		EntityFactory $entityFactory,
-		MetadataSchemas\IValidator $schemaValidator,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->accessId = $accessId;
-		$this->accessSecret = $accessSecret;
-		$this->lang = $lang;
-		$this->endpoint = $endpoint;
-
-		$this->entityFactory = $entityFactory;
-		$this->schemaValidator = $schemaValidator;
-		$this->dateTimeFactory = $dateTimeFactory;
-
+		private readonly string $accessId,
+		private readonly string $accessSecret,
+		private readonly string $lang,
+		private readonly Types\OpenApiEndpoint $endpoint,
+		private readonly EntityFactory $entityFactory,
+		private readonly MetadataSchemas\Validator $schemaValidator,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
 	/**
-	 * @return void
-	 *
 	 * @throws Throwable
 	 */
 	public function connect(): void
@@ -158,7 +145,7 @@ final class OpenApi
 				'grant_type' => 1,
 			],
 			null,
-			false
+			false,
 		);
 
 		if (!$response instanceof Message\ResponseInterface) {
@@ -167,7 +154,7 @@ final class OpenApi
 
 		$parsedMessage = $this->schemaValidator->validate(
 			$response->getBody()->getContents(),
-			$this->getSchemaFilePath(self::ACCESS_TOKEN_MESSAGE_SCHEMA_FILENAME)
+			$this->getSchemaFilePath(self::ACCESS_TOKEN_MESSAGE_SCHEMA_FILENAME),
 		);
 
 		$result = $parsedMessage->offsetGet('result');
@@ -178,35 +165,31 @@ final class OpenApi
 
 		$result->offsetSet(
 			'expire_time',
-			intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
+			intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet(
+				'expire',
+			) : $result->offsetGet(
+				'expire_time',
+			)) * 1_000,
 		);
 
 		$this->tokenInfo = $this->entityFactory->build(
 			Entities\API\TuyaTokenInfo::class,
-			$result
+			$result,
 		);
 	}
 
-	/**
-	 * @return void
-	 */
 	public function disconnect(): void
 	{
 		$this->client = null;
 		$this->tokenInfo = null;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isConnected(): bool
 	{
 		return $this->tokenInfo !== null;
 	}
 
 	/**
-	 * @return string
-	 *
 	 * @throws Throwable
 	 */
 	public function getUid(): string
@@ -223,15 +206,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $userId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getUserDevices(
-		string $userId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $userId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -240,7 +220,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId)
+			sprintf(self::USER_DEVICES_API_ENDPOINT, $userId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -248,7 +228,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::USER_DEVICES_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::USER_DEVICES_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -266,13 +246,13 @@ final class OpenApi
 
 						$devices[] = $this->entityFactory->build(
 							Entities\API\UserDeviceDetail::class,
-							$deviceData
+							$deviceData,
 						);
 					}
 
 					$promise->resolve($devices);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -283,15 +263,14 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string[] $deviceIds
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 * @param Array<string> $deviceIds
 	 *
 	 * @throws Throwable
 	 */
 	public function getUserDevicesFactoryInfos(
-		array $deviceIds
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		array $deviceIds,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -303,7 +282,7 @@ final class OpenApi
 			self::USER_DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			]
+			],
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -311,7 +290,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::USER_DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::USER_DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -329,13 +308,13 @@ final class OpenApi
 
 						$factoryInfos[] = $this->entityFactory->build(
 							Entities\API\UserDeviceFactoryInfos::class,
-							$deviceData
+							$deviceData,
 						);
 					}
 
 					$promise->resolve($factoryInfos);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -346,15 +325,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceDetail(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -363,7 +339,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId)
+			sprintf(self::USER_DEVICE_DETAIL_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -371,7 +347,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::USER_DEVICE_DETAIL_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::USER_DEVICE_DETAIL_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -392,7 +368,7 @@ final class OpenApi
 						foreach ($result->offsetGet('status') as $item) {
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\UserDeviceDataPointStatus::class,
-								$item
+								$item,
 							);
 						}
 					}
@@ -401,10 +377,10 @@ final class OpenApi
 
 					$promise->resolve($this->entityFactory->build(
 						Entities\API\UserDeviceDetail::class,
-						$result
+						$result,
 					));
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -415,15 +391,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceSpecifications(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -432,7 +405,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId)
+			sprintf(self::USER_DEVICE_SPECIFICATIONS_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -440,7 +413,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::USER_DEVICE_SPECIFICATIONS_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::USER_DEVICE_SPECIFICATIONS_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -461,7 +434,7 @@ final class OpenApi
 						foreach ($result->offsetGet('functions') as $item) {
 							$deviceFunctions[] = $this->entityFactory->build(
 								Entities\API\UserDeviceSpecificationsFunction::class,
-								$item
+								$item,
 							);
 						}
 					}
@@ -480,7 +453,7 @@ final class OpenApi
 						foreach ($result->offsetGet('status') as $item) {
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\UserDeviceSpecificationsStatus::class,
-								$item
+								$item,
 							);
 						}
 					}
@@ -489,10 +462,10 @@ final class OpenApi
 
 					$promise->resolve($this->entityFactory->build(
 						Entities\API\UserDeviceSpecifications::class,
-						$result
+						$result,
 					));
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -503,15 +476,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getUserDeviceStatus(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -520,7 +490,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId)
+			sprintf(self::USER_DEVICE_STATUS_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -528,7 +498,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::USER_DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::USER_DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -546,13 +516,13 @@ final class OpenApi
 
 						$statuses[] = $this->entityFactory->build(
 							Entities\API\UserDeviceDataPointStatus::class,
-							$statusData
+							$statusData,
 						);
 					}
 
 					$promise->resolve($statuses);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -565,13 +535,12 @@ final class OpenApi
 	/**
 	 * @param Array<string, mixed> $params
 	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getDevices(
-		array $params = []
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		array $params = [],
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -581,7 +550,7 @@ final class OpenApi
 		$result = $this->callRequest(
 			'GET',
 			self::DEVICES_API_ENDPOINT,
-			$params
+			$params,
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -589,7 +558,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICES_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICES_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -613,13 +582,13 @@ final class OpenApi
 
 						$devices[] = $this->entityFactory->build(
 							Entities\API\DeviceInformation::class,
-							$deviceData
+							$deviceData,
 						);
 					}
 
 					$promise->resolve($devices);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -630,15 +599,14 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string[] $deviceIds
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	 * @param Array<string> $deviceIds
 	 *
 	 * @throws Throwable
 	 */
 	public function getDevicesFactoryInfos(
-		array $deviceIds
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		array $deviceIds,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -650,7 +618,7 @@ final class OpenApi
 			self::DEVICES_FACTORY_INFOS_API_ENDPOINT,
 			[
 				'device_ids' => implode(',', $deviceIds),
-			]
+			],
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -658,7 +626,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICES_FACTORY_INFOS_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -676,13 +644,13 @@ final class OpenApi
 
 						$factoryInfos[] = $this->entityFactory->build(
 							Entities\API\DeviceFactoryInfos::class,
-							$deviceData
+							$deviceData,
 						);
 					}
 
 					$promise->resolve($factoryInfos);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -693,15 +661,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceInformation(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -710,7 +675,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId)
+			sprintf(self::DEVICE_INFORMATION_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -718,7 +683,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICE_INFORMATION_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICE_INFORMATION_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -729,10 +694,10 @@ final class OpenApi
 
 					$promise->resolve($this->entityFactory->build(
 						Entities\API\DeviceInformation::class,
-						$result
+						$result,
 					));
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -743,15 +708,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceSpecification(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -760,7 +722,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId)
+			sprintf(self::DEVICE_SPECIFICATION_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -768,7 +730,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICE_SPECIFICATION_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICE_SPECIFICATION_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -789,7 +751,7 @@ final class OpenApi
 						foreach ($result->offsetGet('functions') as $item) {
 							$deviceFunctions[] = $this->entityFactory->build(
 								Entities\API\DeviceSpecificationFunction::class,
-								$item
+								$item,
 							);
 						}
 					}
@@ -808,7 +770,7 @@ final class OpenApi
 						foreach ($result->offsetGet('status') as $item) {
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\DeviceSpecificationStatus::class,
-								$item
+								$item,
 							);
 						}
 					}
@@ -817,10 +779,10 @@ final class OpenApi
 
 					$promise->resolve($this->entityFactory->build(
 						Entities\API\DeviceSpecification::class,
-						$result
+						$result,
 					));
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -831,15 +793,12 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function getDeviceStatus(
-		string $deviceId
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string $deviceId,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -848,7 +807,7 @@ final class OpenApi
 
 		$result = $this->callRequest(
 			'GET',
-			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId)
+			sprintf(self::DEVICE_STATUS_API_ENDPOINT, $deviceId),
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -856,7 +815,7 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICE_STATUS_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$result = $parsedMessage->offsetGet('result');
@@ -874,13 +833,13 @@ final class OpenApi
 
 						$statuses[] = $this->entityFactory->build(
 							Entities\API\DeviceDataPointStatus::class,
-							$statusData
+							$statusData,
 						);
 					}
 
 					$promise->resolve($statuses);
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -891,19 +850,14 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $deviceId
-	 * @param string $code
-	 * @param string|int|float|bool $value
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface
-	 *
 	 * @throws Throwable
 	 */
 	public function setDeviceStatus(
 		string $deviceId,
 		string $code,
-		string|int|float|bool $value
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface {
+		string|int|float|bool $value,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface
+	{
 		if (!$this->isConnected()) {
 			$this->connect();
 		}
@@ -914,7 +868,7 @@ final class OpenApi
 			$body = Utils\Json::encode([
 				'commands' => [
 					[
-						'code'  => $code,
+						'code' => $code,
 						'value' => $value,
 					],
 				],
@@ -923,7 +877,7 @@ final class OpenApi
 			return Promise\reject(new Exceptions\OpenApiCall(
 				'Message body could not be encoded',
 				$ex->getCode(),
-				$ex
+				$ex,
 			));
 		}
 
@@ -931,7 +885,7 @@ final class OpenApi
 			'POST',
 			sprintf(self::DEVICE_SEND_COMMAND_API_ENDPOINT, $deviceId),
 			[],
-			$body
+			$body,
 		);
 
 		if ($result instanceof Promise\PromiseInterface) {
@@ -939,12 +893,12 @@ final class OpenApi
 				->then(function (Message\ResponseInterface $response) use ($promise): void {
 					$parsedMessage = $this->schemaValidator->validate(
 						$response->getBody()->getContents(),
-						$this->getSchemaFilePath(self::DEVICE_SEND_COMMAND_MESSAGE_SCHEMA_FILENAME)
+						$this->getSchemaFilePath(self::DEVICE_SEND_COMMAND_MESSAGE_SCHEMA_FILENAME),
 					);
 
 					$promise->resolve(boolval($parsedMessage->offsetGet('result')));
 				})
-				->otherwise(function (Throwable $ex) use ($promise): void {
+				->otherwise(static function (Throwable $ex) use ($promise): void {
 					$promise->reject($ex);
 				});
 		} else {
@@ -955,13 +909,7 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $method
-	 * @param string $path
 	 * @param Array<string, mixed> $params
-	 * @param string|null $body
-	 * @param bool $async
-	 *
-	 * @return Promise\ExtendedPromiseInterface|Promise\PromiseInterface|Message\ResponseInterface|false
 	 *
 	 * @throws Throwable
 	 */
@@ -969,9 +917,10 @@ final class OpenApi
 		string $method,
 		string $path,
 		array $params = [],
-		?string $body = null,
-		bool $async = true
-	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface|Message\ResponseInterface|false {
+		string|null $body = null,
+		bool $async = true,
+	): Promise\ExtendedPromiseInterface|Promise\PromiseInterface|Message\ResponseInterface|false
+	{
 		$this->refreshAccessToken($path);
 
 		$deferred = new Promise\Deferred();
@@ -979,15 +928,15 @@ final class OpenApi
 		$this->logger->debug(sprintf(
 			'Request: method = %s url = %s',
 			$method,
-			($this->endpoint->getValue() . $path)
+			$this->endpoint->getValue() . $path,
 		), [
-			'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-			'type'    => 'openapi-api',
+			'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+			'type' => 'openapi-api',
 			'request' => [
 				'method' => $method,
-				'url'    => ($this->endpoint->getValue() . $path),
+				'url' => $this->endpoint->getValue() . $path,
 				'params' => $params,
-				'body'   => $body,
+				'body' => $body,
 			],
 		]);
 
@@ -1004,49 +953,51 @@ final class OpenApi
 				$requestPath,
 				[
 					'headers' => $this->buildRequestHeaders($method, $path, $params, $body),
-					'body'    => $body ?? '',
-				]
+					'body' => $body ?? '',
+				],
 			)
-				->then(function (Message\ResponseInterface $response) use ($deferred, $method, $path, $params, $body): void {
-					try {
-						$response = $this->checkResponse($path, $response);
+				->then(
+					function (Message\ResponseInterface $response) use ($deferred, $method, $path, $params, $body): void {
+						try {
+							$response = $this->checkResponse($path, $response);
 
-					} catch (Exceptions\OpenApiCall $ex) {
-						$this->logger->error('Received payload is not valid', [
-							'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'    => 'openapi-api',
-							'exception' => [
-								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
-							],
-							'request' => [
-								'method' => $method,
-								'url'    => ($this->endpoint->getValue() . $path),
-								'params' => $params,
-								'body'   => $body,
-							],
-						]);
+						} catch (Exceptions\OpenApiCall $ex) {
+							$this->logger->error('Received payload is not valid', [
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type' => 'openapi-api',
+								'exception' => [
+									'message' => $ex->getMessage(),
+									'code' => $ex->getCode(),
+								],
+								'request' => [
+									'method' => $method,
+									'url' => $this->endpoint->getValue() . $path,
+									'params' => $params,
+									'body' => $body,
+								],
+							]);
 
-						$deferred->reject($ex);
+							$deferred->reject($ex);
 
-						return;
-					}
+							return;
+						}
 
-					$deferred->resolve($response);
-				})
+						$deferred->resolve($response);
+					},
+				)
 				->otherwise(function (Throwable $ex) use ($deferred, $method, $path, $params, $body): void {
 					$this->logger->error('Calling api endpoint failed', [
-						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'    => 'openapi-api',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'openapi-api',
 						'exception' => [
 							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
+							'code' => $ex->getCode(),
 						],
 						'request' => [
 							'method' => $method,
-							'url'    => ($this->endpoint->getValue() . $path),
+							'url' => $this->endpoint->getValue() . $path,
 							'params' => $params,
-							'body'   => $body,
+							'body' => $body,
 						],
 					]);
 
@@ -1061,43 +1012,42 @@ final class OpenApi
 					$requestPath,
 					[
 						'headers' => $this->buildRequestHeaders($method, $path, $params, $body),
-						'body'    => $body ?? '',
-					]
+						'body' => $body ?? '',
+					],
 				);
 
 				$response = $this->checkResponse($path, $response);
 
 			} catch (GuzzleHttp\Exception\GuzzleException $ex) {
 				$this->logger->error('Calling api endpoint failed', [
-					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'    => 'openapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'openapi-api',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
 					'request' => [
 						'method' => $method,
-						'url'    => ($this->endpoint->getValue() . $path),
+						'url' => $this->endpoint->getValue() . $path,
 						'params' => $params,
-						'body'   => $body,
+						'body' => $body,
 					],
 				]);
 
 				return false;
-
 			} catch (Exceptions\OpenApiCall $ex) {
 				$this->logger->error('Received payload is not valid', [
-					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'    => 'openapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'openapi-api',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
 					'request' => [
 						'method' => $method,
-						'url'    => ($this->endpoint->getValue() . $path),
+						'url' => $this->endpoint->getValue() . $path,
 						'params' => $params,
-						'body'   => $body,
+						'body' => $body,
 					],
 				]);
 
@@ -1109,11 +1059,6 @@ final class OpenApi
 	}
 
 	/**
-	 * @param string $path
-	 * @param Message\ResponseInterface $response
-	 *
-	 * @return Message\ResponseInterface
-	 *
 	 * @throws Throwable
 	 */
 	private function checkResponse(string $path, Message\ResponseInterface $response): Message\ResponseInterface
@@ -1163,11 +1108,6 @@ final class OpenApi
 		return $response;
 	}
 
-	/**
-	 * @param string $path
-	 *
-	 * @return void
-	 */
 	private function refreshAccessToken(string $path): void
 	{
 		if (Utils\Strings::startsWith($path, self::ACCESS_TOKEN_API_ENDPOINT)) {
@@ -1180,7 +1120,7 @@ final class OpenApi
 
 		$tokenExpireTime = $this->tokenInfo->getExpireTime();
 
-		if (($tokenExpireTime - 60 * 1000) > intval($this->dateTimeFactory->getNow()->format('Uv'))) { // 1min
+		if (($tokenExpireTime - 60 * 1_000) > intval($this->dateTimeFactory->getNow()->format('Uv'))) { // 1min
 			return;
 		}
 
@@ -1188,14 +1128,14 @@ final class OpenApi
 			$response = $this->getClient()->get(
 				$this->endpoint->getValue() . sprintf(
 					self::REFRESH_TOKEN_API_ENDPOINT,
-					$this->tokenInfo->getRefreshToken()
+					$this->tokenInfo->getRefreshToken(),
 				),
 				$this->buildRequestHeaders('get', self::REFRESH_TOKEN_API_ENDPOINT),
 			);
 
 			$parsedMessage = $this->schemaValidator->validate(
 				$response->getBody()->getContents(),
-				$this->getSchemaFilePath(self::REFRESH_TOKEN_MESSAGE_SCHEMA_FILENAME)
+				$this->getSchemaFilePath(self::REFRESH_TOKEN_MESSAGE_SCHEMA_FILENAME),
 			);
 
 			$result = $parsedMessage->offsetGet('result');
@@ -1206,33 +1146,34 @@ final class OpenApi
 
 			$result->offsetSet(
 				'expire_time',
-				intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet('expire') : $result->offsetGet('expire_time')) * 1000
+				intval($parsedMessage->offsetGet('t')) + ($result->offsetExists('expire') ? $result->offsetGet(
+					'expire',
+				) : $result->offsetGet(
+					'expire_time',
+				)) * 1_000,
 			);
 
 			$this->tokenInfo = $this->entityFactory->build(
 				Entities\API\TuyaTokenInfo::class,
-				$result
+				$result,
 			);
 		} catch (GuzzleHttp\Exception\GuzzleException $ex) {
 			$this->logger->error(
 				'Could not refresh access token',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'    => 'openapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'openapi-api',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-				]
+				],
 			);
 		}
 	}
 
 	/**
-	 * @param string $method
-	 * @param string $path
 	 * @param Array<string, mixed> $params
-	 * @param string|null $body
 	 *
 	 * @return Array<string, string|int>
 	 */
@@ -1240,39 +1181,36 @@ final class OpenApi
 		string $method,
 		string $path,
 		array $params = [],
-		?string $body = null
-	): array {
+		string|null $body = null,
+	): array
+	{
 		$accessToken = $this->tokenInfo?->getAccessToken();
 
 		$sign = $this->calculateSign($method, $path, $params, $body);
 
 		return [
-			'client_id'    => $this->accessId,
-			'sign'         => $sign->getSign(),
-			'sign_method'  => 'HMAC-SHA256',
-			'access_token' => $accessToken ?: '',
-			't'            => $sign->getTimestamp(),
-			'lang'         => $this->lang,
-			'dev_lang'     => 'php',
-			'dev_version'  => self::VERSION,
-			'dev_channel'  => 'cloud_' . $this->devChannel,
+			'client_id' => $this->accessId,
+			'sign' => $sign->getSign(),
+			'sign_method' => 'HMAC-SHA256',
+			'access_token' => $accessToken ?? '',
+			't' => $sign->getTimestamp(),
+			'lang' => $this->lang,
+			'dev_lang' => 'php',
+			'dev_version' => self::VERSION,
+			'dev_channel' => 'cloud_' . $this->devChannel,
 		];
 	}
 
 	/**
-	 * @param string $method
-	 * @param string $path
 	 * @param Array<string, mixed> $params
-	 * @param string|null $body
-	 *
-	 * @return Entities\API\Sign
 	 */
 	private function calculateSign(
 		string $method,
 		string $path,
 		array $params = [],
-		?string $body = null
-	): Entities\API\Sign {
+		string|null $body = null,
+	): Entities\API\Sign
+	{
 		$strToSign = $method;
 		$strToSign .= "\n";
 
@@ -1309,9 +1247,6 @@ final class OpenApi
 		return new Entities\API\Sign($sign, $timestamp);
 	}
 
-	/**
-	 * @return GuzzleHttp\Client
-	 */
 	private function getClient(): GuzzleHttp\Client
 	{
 		if ($this->client === null) {
@@ -1321,15 +1256,12 @@ final class OpenApi
 		return $this->client;
 	}
 
-	/**
-	 * @param string $schemaFilename
-	 *
-	 * @return string
-	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {
-			$schema = Utils\FileSystem::read(TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename);
+			$schema = Utils\FileSystem::read(
+				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+			);
 
 		} catch (Nette\IOException) {
 			throw new Exceptions\OpenApiCall('Validation schema for response could not be loaded');

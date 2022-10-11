@@ -17,6 +17,8 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 
 use FastyBird\TuyaConnector\Types;
 use Ramsey\Uuid;
+use function array_map;
+use function array_merge;
 
 /**
  * Device status message entity
@@ -29,28 +31,21 @@ use Ramsey\Uuid;
 final class DeviceStatus extends Device
 {
 
-	/** @var DataPointStatus[] */
-	private array $dataPoints;
-
 	/**
-	 * @param Types\MessageSource $source
-	 * @param Uuid\UuidInterface $connector
-	 * @param string $identifier
-	 * @param DataPointStatus[] $dataPoints
+	 * @param Array<DataPointStatus> $dataPoints
 	 */
 	public function __construct(
 		Types\MessageSource $source,
 		Uuid\UuidInterface $connector,
 		string $identifier,
-		array $dataPoints
-	) {
+		private readonly array $dataPoints,
+	)
+	{
 		parent::__construct($source, $connector, $identifier);
-
-		$this->dataPoints = $dataPoints;
 	}
 
 	/**
-	 * @return DataPointStatus[]
+	 * @return Array<DataPointStatus>
 	 */
 	public function getDataPoints(): array
 	{
@@ -63,9 +58,10 @@ final class DeviceStatus extends Device
 	public function toArray(): array
 	{
 		return array_merge(parent::toArray(), [
-			'data_points' => array_map(function (DataPointStatus $channel): array {
-				return $channel->toArray();
-			}, $this->getDataPoints()),
+			'data_points' => array_map(
+				static fn (DataPointStatus $channel): array => $channel->toArray(),
+				$this->getDataPoints(),
+			),
 		]);
 	}
 

@@ -25,6 +25,7 @@ use FastyBird\TuyaConnector\Types;
 use Nette;
 use React\EventLoop;
 use ReflectionClass;
+use function array_key_exists;
 use function React\Async\async;
 
 /**
@@ -35,72 +36,42 @@ use function React\Async\async;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-final class Connector implements DevicesModuleConnectors\IConnector
+final class Connector implements DevicesModuleConnectors\Connector
 {
 
 	use Nette\SmartObject;
 
 	private const QUEUE_PROCESSING_INTERVAL = 0.01;
 
-	/** @var MetadataEntities\Modules\DevicesModule\IConnectorEntity */
-	private MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector;
+	private Clients\Client|null $client = null;
 
-	/** @var Clients\Client|null */
-	private ?Clients\Client $client = null;
-
-	/** @var Clients\ClientFactory[] */
-	private array $clientsFactories;
-
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $consumerTimer;
-
-	/** @var Helpers\Connector */
-	private Helpers\Connector $connectorHelper;
-
-	/** @var Consumers\Messages */
-	private Consumers\Messages $consumer;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
+	private EventLoop\TimerInterface|null $consumerTimer;
 
 	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 * @param Clients\ClientFactory[] $clientsFactories
-	 * @param Helpers\Connector $connectorHelper
-	 * @param Consumers\Messages $consumer
-	 * @param EventLoop\LoopInterface $eventLoop
+	 * @param Array<Clients\ClientFactory> $clientsFactories
 	 */
 	public function __construct(
-		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
-		array $clientsFactories,
-		Helpers\Connector $connectorHelper,
-		Consumers\Messages $consumer,
-		EventLoop\LoopInterface $eventLoop
-	) {
-		$this->connector = $connector;
-
-		$this->clientsFactories = $clientsFactories;
-
-		$this->connectorHelper = $connectorHelper;
-		$this->consumer = $consumer;
-
-		$this->eventLoop = $eventLoop;
+		private readonly MetadataEntities\DevicesModule\Connector $connector,
+		private readonly array $clientsFactories,
+		private readonly Helpers\Connector $connectorHelper,
+		private readonly Consumers\Messages $consumer,
+		private readonly EventLoop\LoopInterface $eventLoop,
+	)
+	{
 	}
 
 	/**
-	 * {@inheritDoc}
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 */
 	public function execute(): void
 	{
 		$mode = $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_CLIENT_MODE)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_CLIENT_MODE),
 		);
 
 		if ($mode === null) {
-			throw new DevicesModuleExceptions\TerminateException('Connector client mode is not configured');
+			throw new DevicesModuleExceptions\Terminate('Connector client mode is not configured');
 		}
 
 		foreach ($this->clientsFactories as $clientFactory) {
@@ -117,7 +88,7 @@ final class Connector implements DevicesModuleConnectors\IConnector
 		}
 
 		if ($this->client === null) {
-			throw new DevicesModuleExceptions\TerminateException('Connector client is not configured');
+			throw new DevicesModuleExceptions\Terminate('Connector client is not configured');
 		}
 
 		$this->client->connect();
@@ -126,13 +97,10 @@ final class Connector implements DevicesModuleConnectors\IConnector
 			self::QUEUE_PROCESSING_INTERVAL,
 			async(function (): void {
 				$this->consumer->consume();
-			})
+			}),
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function terminate(): void
 	{
 		$this->client?->disconnect();
@@ -142,9 +110,6 @@ final class Connector implements DevicesModuleConnectors\IConnector
 		}
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function hasUnfinishedTasks(): bool
 	{
 		return !$this->consumer->isEmpty() && $this->consumerTimer !== null;

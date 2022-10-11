@@ -31,11 +31,6 @@ interface LocalFactory extends ClientFactory
 
 	public const MODE = Types\ClientMode::MODE_LOCAL;
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 *
-	 * @return Local
-	 */
-	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): Local;
+	public function create(MetadataEntities\DevicesModule\Connector $connector): Local;
 
 }

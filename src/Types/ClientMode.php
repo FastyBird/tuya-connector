@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * Connector client modes types
@@ -32,11 +33,9 @@ class ClientMode extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const MODE_LOCAL = 'local';
+
 	public const MODE_CLOUD = 'cloud';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

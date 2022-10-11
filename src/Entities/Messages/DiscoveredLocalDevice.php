@@ -18,6 +18,7 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 use FastyBird\TuyaConnector\Types;
 use Nette;
 use Ramsey\Uuid;
+use function array_map;
 
 /**
  * Discovered local device entity
@@ -32,118 +33,59 @@ final class DiscoveredLocalDevice implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var Uuid\UuidInterface */
-	private Uuid\UuidInterface $connector;
-
-	/** @var string */
-	private string $id;
-
-	/** @var string */
-	private string $ipAddress;
-
-	/** @var string */
-	private string $localKey;
-
-	/** @var bool */
-	private bool $encrypted;
-
-	/** @var string */
-	private string $version;
-
-	/** @var DiscoveredLocalDataPoint[] */
-	private array $dataPoints = [];
-
-	/** @var Types\MessageSource */
-	private Types\MessageSource $source;
-
 	/**
-	 * @param Uuid\UuidInterface $connector
-	 * @param string $id
-	 * @param string $ipAddress
-	 * @param string $localKey
-	 * @param bool $encrypted
-	 * @param string $version
-	 * @param DiscoveredLocalDataPoint[] $dataPoints
-	 * @param Types\MessageSource $source
+	 * @param Array<DiscoveredLocalDataPoint> $dataPoints
 	 */
 	public function __construct(
-		Uuid\UuidInterface $connector,
-		string $id,
-		string $ipAddress,
-		string $localKey,
-		bool $encrypted,
-		string $version,
-		array $dataPoints,
-		Types\MessageSource $source
-	) {
-		$this->connector = $connector;
-		$this->id = $id;
-		$this->ipAddress = $ipAddress;
-		$this->localKey = $localKey;
-		$this->encrypted = $encrypted;
-		$this->version = $version;
-		$this->dataPoints = $dataPoints;
-		$this->source = $source;
+		private readonly Uuid\UuidInterface $connector,
+		private readonly string $id,
+		private readonly string $ipAddress,
+		private readonly string $localKey,
+		private readonly bool $encrypted,
+		private readonly string $version,
+		private readonly array $dataPoints,
+		private readonly Types\MessageSource $source,
+	)
+	{
 	}
 
-	/**
-	 * @return Uuid\UuidInterface
-	 */
 	public function getConnector(): Uuid\UuidInterface
 	{
 		return $this->connector;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getId(): string
 	{
 		return $this->id;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getIpAddress(): string
 	{
 		return $this->ipAddress;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getLocalKey(): string
 	{
 		return $this->localKey;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isEncrypted(): bool
 	{
 		return $this->encrypted;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getVersion(): string
 	{
 		return $this->version;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getSource(): Types\MessageSource
 	{
 		return $this->source;
 	}
 
 	/**
-	 * @return DiscoveredLocalDataPoint[]
+	 * @return Array<DiscoveredLocalDataPoint>
 	 */
 	public function getDataPoints(): array
 	{
@@ -156,16 +98,17 @@ final class DiscoveredLocalDevice implements Entity
 	public function toArray(): array
 	{
 		return [
-			'connector'   => $this->getConnector()->toString(),
-			'id'          => $this->id,
-			'ip_address'  => $this->ipAddress,
-			'local_key'   => $this->localKey,
-			'encrypted'   => $this->encrypted,
-			'version'     => $this->version,
-			'data_points' => array_map(function (DiscoveredLocalDataPoint $item): array {
-				return $item->toArray();
-			}, $this->getDataPoints()),
-			'source'      => $this->getSource()->getValue(),
+			'connector' => $this->getConnector()->toString(),
+			'id' => $this->id,
+			'ip_address' => $this->ipAddress,
+			'local_key' => $this->localKey,
+			'encrypted' => $this->encrypted,
+			'version' => $this->version,
+			'data_points' => array_map(
+				static fn (DiscoveredLocalDataPoint $item): array => $item->toArray(),
+				$this->getDataPoints(),
+			),
+			'source' => $this->getSource()->getValue(),
 		];
 	}
 

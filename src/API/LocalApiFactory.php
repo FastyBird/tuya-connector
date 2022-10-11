@@ -32,53 +32,26 @@ use React\EventLoop;
 final class LocalApiFactory
 {
 
-	/** @var MetadataSchemas\IValidator */
-	private MetadataSchemas\IValidator $schemaValidator;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param MetadataSchemas\IValidator $schemaValidator
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		MetadataSchemas\IValidator $schemaValidator,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->schemaValidator = $schemaValidator;
-		$this->dateTimeFactory = $dateTimeFactory;
-		$this->eventLoop = $eventLoop;
-
+		private readonly MetadataSchemas\Validator $schemaValidator,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		private readonly EventLoop\LoopInterface $eventLoop,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
-	/**
-	 * @param string $identifier
-	 * @param string|null $gateway
-	 * @param string $localKey
-	 * @param string $ipAddress
-	 * @param Types\DeviceProtocolVersion $protocolVersion
-	 *
-	 * @return LocalApi
-	 */
 	public function create(
 		string $identifier,
-		?string $gateway,
+		string|null $gateway,
 		string $localKey,
 		string $ipAddress,
-		Types\DeviceProtocolVersion $protocolVersion
-	): LocalApi {
+		Types\DeviceProtocolVersion $protocolVersion,
+	): LocalApi
+	{
 		return new LocalApi(
 			$identifier,
 			$gateway,
@@ -88,7 +61,7 @@ final class LocalApiFactory
 			$this->schemaValidator,
 			$this->dateTimeFactory,
 			$this->eventLoop,
-			$this->logger
+			$this->logger,
 		);
 	}
 

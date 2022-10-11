@@ -31,11 +31,6 @@ interface CloudFactory extends ClientFactory
 
 	public const MODE = Types\ClientMode::MODE_CLOUD;
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 *
-	 * @return Cloud
-	 */
-	public function create(MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector): Cloud;
+	public function create(MetadataEntities\DevicesModule\Connector $connector): Cloud;
 
 }

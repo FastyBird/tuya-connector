@@ -18,6 +18,8 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 use FastyBird\Metadata\Types as MetadataTypes;
 use FastyBird\TuyaConnector\Types;
 use Nette;
+use function is_scalar;
+use function strval;
 
 /**
  * Data point status entity
@@ -32,50 +34,25 @@ final class DataPointStatus implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var Types\MessageSource */
-	private Types\MessageSource $source;
-
-	/** @var string */
-	private string $identifier;
-
-	/** @var float|int|string|bool|MetadataTypes\SwitchPayloadType|null */
-	private float|int|string|bool|MetadataTypes\SwitchPayloadType|null $value;
-
-	/**
-	 * @param Types\MessageSource $source
-	 * @param string $identifier
-	 * @param float|int|string|bool|MetadataTypes\SwitchPayloadType|null $value
-	 */
 	public function __construct(
-		Types\MessageSource $source,
-		string $identifier,
-		float|int|string|bool|MetadataTypes\SwitchPayloadType|null $value
-	) {
-		$this->source = $source;
-		$this->identifier = $identifier;
-		$this->value = $value;
+		private readonly Types\MessageSource $source,
+		private readonly string $identifier,
+		private readonly float|int|string|bool|MetadataTypes\SwitchPayload|null $value,
+	)
+	{
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getSource(): Types\MessageSource
 	{
 		return $this->source;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getIdentifier(): string
 	{
 		return $this->identifier;
 	}
 
-	/**
-	 * @return float|int|string|bool|MetadataTypes\SwitchPayloadType|null
-	 */
-	public function getValue(): float|int|string|bool|MetadataTypes\SwitchPayloadType|null
+	public function getValue(): float|int|string|bool|MetadataTypes\SwitchPayload|null
 	{
 		return $this->value;
 	}
@@ -86,9 +63,9 @@ final class DataPointStatus implements Entity
 	public function toArray(): array
 	{
 		return [
-			'source'     => $this->getSource()->getValue(),
+			'source' => $this->getSource()->getValue(),
 			'identifier' => $this->getIdentifier(),
-			'value'      => is_scalar($this->getValue()) ? $this->getValue() : strval($this->getValue()),
+			'value' => is_scalar($this->getValue()) ? $this->getValue() : strval($this->getValue()),
 		];
 	}
 

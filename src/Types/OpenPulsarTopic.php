@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * OpenPulsar topic types
@@ -32,11 +33,9 @@ class OpenPulsarTopic extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const TOPIC_PROD = 'event';
+
 	public const TOPIC_TEST = 'event-test';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

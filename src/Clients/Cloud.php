@@ -39,7 +39,18 @@ use Ratchet\RFC6455;
 use React\EventLoop;
 use React\Socket;
 use Throwable;
+use function array_key_exists;
+use function base64_decode;
+use function in_array;
+use function is_bool;
+use function is_numeric;
+use function is_string;
+use function md5;
+use function openssl_decrypt;
 use function React\Async\async;
+use function strval;
+use const DIRECTORY_SEPARATOR;
+use const OPENSSL_RAW_DATA;
 
 /**
  * Cloud devices client
@@ -57,6 +68,7 @@ final class Cloud implements Client
 	private const PING_INTERVAL = 30;
 
 	private const HANDLER_START_DELAY = 2;
+
 	private const HANDLER_PROCESSING_INTERVAL = 0.01;
 
 	private const HEARTBEAT_TIMEOUT = 600;
@@ -64,14 +76,18 @@ final class Cloud implements Client
 	private const SENDING_COMMAND_DELAY = 120;
 
 	public const WS_MESSAGE_SCHEMA_FILENAME = 'openpulsar_message.json';
+
 	public const WS_MESSAGE_PAYLOAD_SCHEMA_FILENAME = 'openpulsar_payload.json';
+
 	public const WS_MESSAGE_PAYLOAD_DATA_SCHEMA_FILENAME = 'openpulsar_data.json';
 
 	private const CMD_INFO = 'info';
+
 	private const CMD_STATUS = 'status';
+
 	private const CMD_HEARTBEAT = 'hearbeat';
 
-	/** @var string[] */
+	/** @var Array<string> */
 	private array $processedDevices = [];
 
 	/** @var Array<string, Array<string, DateTimeInterface|bool>> */
@@ -80,114 +96,40 @@ final class Cloud implements Client
 	/** @var Array<string, DateTimeInterface> */
 	private array $processedProperties = [];
 
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $pingTimer = null;
+	private EventLoop\TimerInterface|null $pingTimer = null;
 
-	/** @var EventLoop\TimerInterface|null */
-	private ?EventLoop\TimerInterface $handlerTimer = null;
+	private EventLoop\TimerInterface|null $handlerTimer = null;
 
 	/** @var Array<string, EventLoop\TimerInterface> */
 	private array $heartbeatTimers = [];
 
-	/** @var MetadataEntities\Modules\DevicesModule\IConnectorEntity */
-	private MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector;
+	private Ratchet\Client\WebSocket|null $wsConnection = null;
 
-	/** @var Ratchet\Client\WebSocket|null */
-	private ?Ratchet\Client\WebSocket $wsConnection = null;
-
-	/** @var Helpers\Connector */
-	private Helpers\Connector $connectorHelper;
-
-	/** @var Helpers\Property */
-	private Helpers\Property $propertyStateHelper;
-
-	/** @var Consumers\Messages */
-	private Consumers\Messages $consumer;
-
-	/** @var API\OpenApi */
 	private API\OpenApi $openApiApi;
 
-	/** @var DevicesModuleModels\DataStorage\IDevicesRepository */
-	private DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelsRepository */
-	private DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelPropertiesRepository */
-	private DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository;
-
-	/** @var DevicesModuleModels\States\DeviceConnectionStateManager */
-	private DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var MetadataSchemas\IValidator */
-	private MetadataSchemas\IValidator $schemaValidator;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector
-	 * @param Helpers\Connector $connectorHelper
-	 * @param Helpers\Property $propertyStateHelper
-	 * @param Consumers\Messages $consumer
-	 * @param API\OpenApiFactory $openApiApiFactory
-	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository
-	 * @param DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param MetadataSchemas\IValidator $schemaValidator
-	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		MetadataEntities\Modules\DevicesModule\IConnectorEntity $connector,
-		Helpers\Connector $connectorHelper,
-		Helpers\Property $propertyStateHelper,
-		Consumers\Messages $consumer,
+		private readonly MetadataEntities\DevicesModule\Connector $connector,
+		private readonly Helpers\Connector $connectorHelper,
+		private readonly Helpers\Property $propertyStateHelper,
+		private readonly Consumers\Messages $consumer,
 		API\OpenApiFactory $openApiApiFactory,
-		DevicesModuleModels\DataStorage\IDevicesRepository $devicesRepository,
-		DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository,
-		DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository,
-		DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		MetadataSchemas\IValidator $schemaValidator,
-		EventLoop\LoopInterface $eventLoop,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->connector = $connector;
-
-		$this->connectorHelper = $connectorHelper;
-		$this->propertyStateHelper = $propertyStateHelper;
-
-		$this->consumer = $consumer;
-
-		$this->devicesRepository = $devicesRepository;
-
-		$this->channelsRepository = $channelsRepository;
-		$this->channelPropertiesRepository = $channelPropertiesRepository;
-
-		$this->deviceConnectionStateManager = $deviceConnectionStateManager;
-
-		$this->dateTimeFactory = $dateTimeFactory;
-		$this->schemaValidator = $schemaValidator;
-
-		$this->eventLoop = $eventLoop;
-
+		private readonly DevicesModuleModels\DataStorage\DevicesRepository $devicesRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelsRepository $channelsRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelPropertiesRepository $channelPropertiesRepository,
+		private readonly DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		private readonly MetadataSchemas\Validator $schemaValidator,
+		private readonly EventLoop\LoopInterface $eventLoop,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 
 		$this->openApiApi = $openApiApiFactory->create($this->connector);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function connect(): void
 	{
 		$this->processedDevices = [];
@@ -200,12 +142,12 @@ final class Cloud implements Client
 		$this->heartbeatTimers = [];
 
 		$reactConnector = new Socket\Connector([
-			'dns'     => '8.8.8.8',
+			'dns' => '8.8.8.8',
 			'timeout' => 10,
-			'tls'     => [
-				'verify_peer'      => false,
+			'tls' => [
+				'verify_peer' => false,
 				'verify_peer_name' => false,
-				'check_hostname'   => false,
+				'check_hostname' => false,
 			],
 		]);
 
@@ -216,11 +158,11 @@ final class Cloud implements Client
 			[],
 			[
 				'Connection' => 'Upgrade',
-				'username'   => $this->connectorHelper->getConfiguration(
+				'username' => $this->connectorHelper->getConfiguration(
 					$this->connector->getId(),
-					Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+					Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID),
 				),
-				'password'   => $this->generatePassword(),
+				'password' => $this->generatePassword(),
 			],
 		)
 			->then(function (Ratchet\Client\WebSocket $connection): void {
@@ -228,11 +170,11 @@ final class Cloud implements Client
 					'Connected to Tuya sockets server',
 					[
 						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'   => 'cloud-client',
+						'type' => 'cloud-client',
 						'connector' => [
 							'id' => $this->connector->getId()->toString(),
 						],
-					]
+					],
 				);
 
 				$this->wsConnection = $connection;
@@ -241,20 +183,20 @@ final class Cloud implements Client
 					$this->handleWsMessage($message->getPayload());
 				});
 
-				$connection->on('close', function ($code = null, $reason = null) {
+				$connection->on('close', function ($code = null, $reason = null): void {
 					$this->logger->debug(
 						'Connection to Tuya WS server was closed',
 						[
-							'source'     => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'       => 'cloud-client',
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type' => 'cloud-client',
 							'connection' => [
-								'code'   => $code,
+								'code' => $code,
 								'reason' => $reason,
 							],
 							'connector' => [
 								'id' => $this->connector->getId()->toString(),
 							],
-						]
+						],
 					);
 
 					if ($this->pingTimer !== null) {
@@ -270,22 +212,22 @@ final class Cloud implements Client
 					$this->logger->error(
 						'An error occurred on WS server connection',
 						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'cloud-client',
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type' => 'cloud-client',
 							'exception' => [
 								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
+								'code' => $ex->getCode(),
 							],
 							'connector' => [
 								'id' => $this->connector->getId()->toString(),
 							],
-						]
+						],
 					);
 
-					throw new DevicesModuleExceptions\TerminateException(
+					throw new DevicesModuleExceptions\Terminate(
 						'Connection to WS server was terminated',
 						$ex->getCode(),
-						$ex
+						$ex,
 					);
 				});
 
@@ -295,34 +237,36 @@ final class Cloud implements Client
 						$connection->send(new RFC6455\Messaging\Frame(
 							strval($this->connectorHelper->getConfiguration(
 								$this->connector->getId(),
-								Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+								Types\ConnectorPropertyIdentifier::get(
+									Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID,
+								),
 							)),
 							true,
-							RFC6455\Messaging\Frame::OP_PING
+							RFC6455\Messaging\Frame::OP_PING,
 						));
-					})
+					}),
 				);
 			})
 			->otherwise(function (Throwable $ex): void {
 				$this->logger->error(
 					'Connection to Tuya WS server failed',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'cloud-client',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'cloud-client',
 						'exception' => [
 							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
+							'code' => $ex->getCode(),
 						],
 						'connector' => [
 							'id' => $this->connector->getId()->toString(),
 						],
-					]
+					],
 				);
 
-				throw new DevicesModuleExceptions\TerminateException(
+				throw new DevicesModuleExceptions\Terminate(
 					'Connection to Tuya WS server failed',
 					$ex->getCode(),
-					$ex
+					$ex,
 				);
 			});
 
@@ -330,13 +274,10 @@ final class Cloud implements Client
 			self::HANDLER_START_DELAY,
 			function (): void {
 				$this->registerLoopHandler();
-			}
+			},
 		);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function disconnect(): void
 	{
 		$this->wsConnection?->close();
@@ -361,9 +302,7 @@ final class Cloud implements Client
 	}
 
 	/**
-	 * @return void
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
 	private function handleCommunication(): void
@@ -373,7 +312,9 @@ final class Cloud implements Client
 		}
 
 		foreach ($this->processedProperties as $index => $processedProperty) {
-			if (((float) $this->dateTimeFactory->getNow()->format('Uv') - (float) $processedProperty->format('Uv')) >= 500) {
+			if ((float) $this->dateTimeFactory->getNow()->format('Uv') - (float) $processedProperty->format(
+				'Uv',
+			) >= 500) {
 				unset($this->processedProperties[$index]);
 			}
 		}
@@ -381,7 +322,9 @@ final class Cloud implements Client
 		foreach ($this->devicesRepository->findAllByConnector($this->connector->getId()) as $device) {
 			if (
 				!in_array($device->getId()->toString(), $this->processedDevices, true)
-				&& !$this->deviceConnectionStateManager->getState($device)->equalsValue(MetadataTypes\ConnectionStateType::STATE_STOPPED)
+				&& !$this->deviceConnectionStateManager->getState($device)->equalsValue(
+					MetadataTypes\ConnectionState::STATE_STOPPED,
+				)
 			) {
 				$this->processedDevices[] = $device->getId()->toString();
 
@@ -399,14 +342,10 @@ final class Cloud implements Client
 	}
 
 	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
-	private function processDevice(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
+	private function processDevice(MetadataEntities\DevicesModule\Device $deviceItem): bool
 	{
 		if ($this->readDeviceData(self::CMD_INFO, $deviceItem)) {
 			return true;
@@ -421,7 +360,9 @@ final class Cloud implements Client
 		}
 
 		if (
-			$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
+			$this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(
+				MetadataTypes\ConnectionState::STATE_CONNECTED,
+			)
 		) {
 			return $this->writeChannelsProperty($deviceItem);
 		}
@@ -430,17 +371,13 @@ final class Cloud implements Client
 	}
 
 	/**
-	 * @param string $cmd
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
 	 * @throws Throwable
 	 */
 	private function readDeviceData(
 		string $cmd,
-		MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	): bool {
+		MetadataEntities\DevicesModule\Device $deviceItem,
+	): bool
+	{
 		$httpCmdResult = null;
 
 		if (!array_key_exists($deviceItem->getId()->toString(), $this->processedDevicesCommands)) {
@@ -464,13 +401,12 @@ final class Cloud implements Client
 
 		$this->processedDevicesCommands[$deviceItem->getId()->toString()][$cmd] = $this->dateTimeFactory->getNow();
 
-		if (
-			$cmd === self::CMD_INFO
-			|| $cmd === self::CMD_HEARTBEAT
-		) {
+		if ($cmd === self::CMD_INFO || $cmd === self::CMD_HEARTBEAT) {
 			if (
 				$cmd === self::CMD_INFO
-				&& $this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(MetadataTypes\ConnectionStateType::STATE_CONNECTED)
+				&& $this->deviceConnectionStateManager->getState($deviceItem)->equalsValue(
+					MetadataTypes\ConnectionState::STATE_CONNECTED,
+				)
 			) {
 				$this->processedDevicesCommands[$deviceItem->getId()->toString()][$cmd] = true;
 
@@ -491,7 +427,7 @@ final class Cloud implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						$deviceInformation->isOnline()
+						$deviceInformation->isOnline(),
 					));
 
 					if ($cmd === self::CMD_HEARTBEAT) {
@@ -499,7 +435,7 @@ final class Cloud implements Client
 							self::HEARTBEAT_TIMEOUT,
 							function () use ($cmd, $deviceItem): void {
 								unset($this->processedDevicesCommands[$deviceItem->getId()->toString()][$cmd]);
-							}
+							},
 						);
 					}
 				})
@@ -507,22 +443,22 @@ final class Cloud implements Client
 					$this->logger->error(
 						'Could not call cloud openapi',
 						[
-							'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'      => 'cloud-client',
+							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+							'type' => 'cloud-client',
 							'exception' => [
 								'message' => $ex->getMessage(),
-								'code'    => $ex->getCode(),
+								'code' => $ex->getCode(),
 							],
 							'connector' => [
 								'id' => $this->connector->getId()->toString(),
 							],
-						]
+						],
 					);
 
-					throw new DevicesModuleExceptions\TerminateException(
+					throw new DevicesModuleExceptions\Terminate(
 						'Could not call cloud openapi',
 						$ex->getCode(),
-						$ex
+						$ex,
 					);
 				});
 
@@ -537,7 +473,7 @@ final class Cloud implements Client
 						$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
 							Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
 							$status->getCode(),
-							$status->getValue()
+							$status->getValue(),
 						);
 					}
 
@@ -545,7 +481,7 @@ final class Cloud implements Client
 						Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENAPI),
 						$this->connector->getId(),
 						$deviceItem->getIdentifier(),
-						$dataPointsStatuses
+						$dataPointsStatuses,
 					));
 				})
 				->otherwise(function (Throwable $ex): void {
@@ -553,22 +489,22 @@ final class Cloud implements Client
 						$this->logger->error(
 							'Calling Tuya cloud failed',
 							[
-								'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'      => 'cloud-client',
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type' => 'cloud-client',
 								'exception' => [
 									'message' => $ex->getMessage(),
-									'code'    => $ex->getCode(),
+									'code' => $ex->getCode(),
 								],
 								'connector' => [
 									'id' => $this->connector->getId()->toString(),
 								],
-							]
+							],
 						);
 
-						throw new DevicesModuleExceptions\TerminateException(
+						throw new DevicesModuleExceptions\Terminate(
 							'Calling Tuya cloud failed',
 							$ex->getCode(),
-							$ex
+							$ex,
 						);
 					}
 				});
@@ -578,26 +514,35 @@ final class Cloud implements Client
 	}
 
 	/**
-	 * @param MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem
-	 *
-	 * @return bool
-	 *
-	 * @throws DevicesModuleExceptions\TerminateException
+	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws Throwable
 	 */
-	private function writeChannelsProperty(MetadataEntities\Modules\DevicesModule\IDeviceEntity $deviceItem): bool
+	private function writeChannelsProperty(MetadataEntities\DevicesModule\Device $deviceItem): bool
 	{
 		$now = $this->dateTimeFactory->getNow();
 
 		foreach ($this->channelsRepository->findAllByDevice($deviceItem->getId()) as $channelItem) {
-			foreach ($this->channelPropertiesRepository->findAllByChannel($channelItem->getId(), MetadataEntities\Modules\DevicesModule\ChannelDynamicPropertyEntity::class) as $propertyItem) {
+			foreach ($this->channelPropertiesRepository->findAllByChannel(
+				$channelItem->getId(),
+				MetadataEntities\DevicesModule\ChannelDynamicProperty::class,
+			) as $propertyItem) {
 				if (
 					$propertyItem->isSettable()
 					&& $propertyItem->getExpectedValue() !== null
 					&& $propertyItem->isPending()
 				) {
-					$pending = is_string($propertyItem->getPending()) ? Utils\DateTime::createFromFormat(DateTimeInterface::ATOM, $propertyItem->getPending()) : true;
-					$debounce = array_key_exists($propertyItem->getId()->toString(), $this->processedProperties) ? $this->processedProperties[$propertyItem->getId()->toString()] : false;
+					$pending = is_string($propertyItem->getPending())
+						? Utils\DateTime::createFromFormat(
+							DateTimeInterface::ATOM,
+							$propertyItem->getPending(),
+						)
+						: true;
+					$debounce = array_key_exists(
+						$propertyItem->getId()->toString(),
+						$this->processedProperties,
+					)
+						? $this->processedProperties[$propertyItem->getId()->toString()]
+						: false;
 
 					if (
 						$debounce !== false
@@ -612,7 +557,7 @@ final class Cloud implements Client
 						$pending === true
 						|| (
 							$pending !== false
-							&& (float) $now->format('Uv') - (float) $pending->format('Uv') > 2000
+							&& (float) $now->format('Uv') - (float) $pending->format('Uv') > 2_000
 						)
 					) {
 						$this->processedProperties[$propertyItem->getId()->toString()] = $now;
@@ -620,14 +565,14 @@ final class Cloud implements Client
 						$this->openApiApi->setDeviceStatus(
 							$deviceItem->getIdentifier(),
 							$propertyItem->getIdentifier(),
-							$propertyItem->getExpectedValue()
+							$propertyItem->getExpectedValue(),
 						)
 							->then(function () use ($propertyItem): void {
 								$this->propertyStateHelper->setValue(
 									$propertyItem,
 									Utils\ArrayHash::from([
 										'pending' => $this->dateTimeFactory->getNow()->format(DateTimeInterface::ATOM),
-									])
+									]),
 								);
 							})
 							->otherwise(function (Throwable $ex) use ($propertyItem): void {
@@ -635,8 +580,8 @@ final class Cloud implements Client
 									$propertyItem,
 									Utils\ArrayHash::from([
 										'expectedValue' => null,
-										'pending'       => false,
-									])
+										'pending' => false,
+									]),
 								);
 
 								unset($this->processedProperties[$propertyItem->getId()->toString()]);
@@ -645,22 +590,22 @@ final class Cloud implements Client
 									$this->logger->error(
 										'Calling Tuya cloud failed',
 										[
-											'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-											'type'      => 'cloud-client',
+											'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+											'type' => 'cloud-client',
 											'exception' => [
 												'message' => $ex->getMessage(),
-												'code'    => $ex->getCode(),
+												'code' => $ex->getCode(),
 											],
 											'connector' => [
 												'id' => $this->connector->getId()->toString(),
 											],
-										]
+										],
 									);
 
-									throw new DevicesModuleExceptions\TerminateException(
+									throw new DevicesModuleExceptions\Terminate(
 										'Calling Tuya cloud failed',
 										$ex->getCode(),
-										$ex
+										$ex,
 									);
 								}
 							});
@@ -674,36 +619,31 @@ final class Cloud implements Client
 		return false;
 	}
 
-	/**
-	 * @param string $message
-	 *
-	 * @return void
-	 */
 	private function handleWsMessage(string $message): void
 	{
 		try {
 			$message = $this->schemaValidator->validate(
 				$message,
-				$this->getSchemaFilePath(self::WS_MESSAGE_SCHEMA_FILENAME)
+				$this->getSchemaFilePath(self::WS_MESSAGE_SCHEMA_FILENAME),
 			);
 
-		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\Logic | MetadataExceptions\MalformedInput | MetadataExceptions\InvalidData | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received Tuya WS message',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'cloud-client',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-					'data'      => [
+					'data' => [
 						'message' => $message,
 					],
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -719,19 +659,19 @@ final class Cloud implements Client
 				$this->logger->error(
 					'Could not confirm received Tuya WS message',
 					[
-						'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'      => 'cloud-client',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'cloud-client',
 						'exception' => [
 							'message' => $ex->getMessage(),
-							'code'    => $ex->getCode(),
+							'code' => $ex->getCode(),
 						],
-						'data'      => [
+						'data' => [
 							'message' => $message,
 						],
 						'connector' => [
 							'id' => $this->connector->getId()->toString(),
 						],
-					]
+					],
 				);
 			}
 		}
@@ -741,11 +681,11 @@ final class Cloud implements Client
 				'Received Tuya WS message is invalid',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-client',
+					'type' => 'cloud-client',
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -758,11 +698,11 @@ final class Cloud implements Client
 				'Received Tuya WS message payload could not be decoded',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-client',
+					'type' => 'cloud-client',
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -772,39 +712,39 @@ final class Cloud implements Client
 			'Received message origin payload',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'cloud-client',
-				'data'   => [
+				'type' => 'cloud-client',
+				'data' => [
 					'payload' => $payload,
 				],
 				'connector' => [
 					'id' => $this->connector->getId()->toString(),
 				],
-			]
+			],
 		);
 
 		try {
 			$payload = $this->schemaValidator->validate(
 				$payload,
-				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_SCHEMA_FILENAME)
+				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_SCHEMA_FILENAME),
 			);
 
-		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\Logic | MetadataExceptions\MalformedInput | MetadataExceptions\InvalidData | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received Tuya WS message payload',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'cloud-client',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-					'data'      => [
+					'data' => [
 						'payload' => $payload,
 					],
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -815,11 +755,11 @@ final class Cloud implements Client
 				'Received Tuya WS message payload is invalid',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-client',
+					'type' => 'cloud-client',
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -832,11 +772,11 @@ final class Cloud implements Client
 				'Received Tuya WS message payload data could not be decoded',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-client',
+					'type' => 'cloud-client',
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -844,7 +784,7 @@ final class Cloud implements Client
 
 		$accessSecret = $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET),
 		);
 
 		$decodingKey = Utils\Strings::substring(strval($accessSecret), 8, 16);
@@ -853,7 +793,7 @@ final class Cloud implements Client
 			$data,
 			'AES-128-ECB',
 			$decodingKey,
-			OPENSSL_RAW_DATA
+			OPENSSL_RAW_DATA,
 		);
 
 		if ($decryptedData === false) {
@@ -861,11 +801,11 @@ final class Cloud implements Client
 				'Received Tuya WS message payload data could not be decrypted',
 				[
 					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'   => 'cloud-client',
+					'type' => 'cloud-client',
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -875,37 +815,37 @@ final class Cloud implements Client
 			'Received message decrypted',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'cloud-client',
-				'data'   => $decryptedData,
+				'type' => 'cloud-client',
+				'data' => $decryptedData,
 				'connector' => [
 					'id' => $this->connector->getId()->toString(),
 				],
-			]
+			],
 		);
 
 		try {
 			$decryptedData = $this->schemaValidator->validate(
 				$decryptedData,
-				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_DATA_SCHEMA_FILENAME)
+				$this->getSchemaFilePath(self::WS_MESSAGE_PAYLOAD_DATA_SCHEMA_FILENAME),
 			);
 
-		} catch (MetadataExceptions\LogicException | MetadataExceptions\MalformedInputException | MetadataExceptions\InvalidDataException | Exceptions\OpenPulsarHandle $ex) {
+		} catch (MetadataExceptions\Logic | MetadataExceptions\MalformedInput | MetadataExceptions\InvalidData | Exceptions\OpenPulsarHandle $ex) {
 			$this->logger->error(
 				'Could not decode received Tuya WS message payload data decrypted',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'cloud-client',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'cloud-client',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-					'data'      => [
+					'data' => [
 						'data' => $decryptedData,
 					],
 					'connector' => [
 						'id' => $this->connector->getId()->toString(),
 					],
-				]
+				],
 			);
 
 			return;
@@ -931,7 +871,7 @@ final class Cloud implements Client
 					$dataPointsStatuses[] = new Entities\Messages\DataPointStatus(
 						Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENPULSAR),
 						$status->code,
-						$status->value
+						$status->value,
 					);
 				}
 			}
@@ -940,7 +880,7 @@ final class Cloud implements Client
 				Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENPULSAR),
 				$this->connector->getId(),
 				$decryptedData->devId,
-				$dataPointsStatuses
+				$dataPointsStatuses,
 			));
 
 			return;
@@ -957,71 +897,59 @@ final class Cloud implements Client
 				Types\MessageSource::get(Types\MessageSource::SOURCE_CLOUD_OPENPULSAR),
 				$this->connector->getId(),
 				$decryptedData->devId,
-				$decryptedData->offsetGet('bizCode') === Types\OpenPulsarMessageType::BIZ_CODE_ONLINE
+				$decryptedData->offsetGet('bizCode') === Types\OpenPulsarMessageType::BIZ_CODE_ONLINE,
 			));
 		}
 	}
 
-	/**
-	 * @return string
-	 */
 	private function buildWsTopicUrl(): string
 	{
 		return $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_ENDPOINT)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_ENDPOINT),
 		) . 'ws/v2/consumer/persistent/' . $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID),
 		) . '/out/' . $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_OPENPULSAR_TOPIC),
 		) . '/' . $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID),
 		) . '-sub?ackTimeoutMillis=3000&subscriptionType=Failover';
 	}
 
-	/**
-	 * @return string
-	 */
 	private function generatePassword(): string
 	{
 		$passString = $this->connectorHelper->getConfiguration(
 			$this->connector->getId(),
-			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID)
+			Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_ID),
 		) . md5(
 			strval($this->connectorHelper->getConfiguration(
 				$this->connector->getId(),
-				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET)
-			))
+				Types\ConnectorPropertyIdentifier::get(Types\ConnectorPropertyIdentifier::IDENTIFIER_ACCESS_SECRET),
+			)),
 		);
 
 		return Utils\Strings::substring(md5($passString), 8, 16);
 	}
 
-	/**
-	 * @return void
-	 */
 	private function registerLoopHandler(): void
 	{
 		$this->handlerTimer = $this->eventLoop->addTimer(
 			self::HANDLER_PROCESSING_INTERVAL,
 			function (): void {
 				$this->handleCommunication();
-			}
+			},
 		);
 	}
 
-	/**
-	 * @param string $schemaFilename
-	 *
-	 * @return string
-	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {
-			$schema = Utils\FileSystem::read(TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename);
+			$schema = Utils\FileSystem::read(
+				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+			);
 
 		} catch (Nette\IOException) {
 			throw new Exceptions\OpenPulsarHandle('Validation schema for response could not be loaded');

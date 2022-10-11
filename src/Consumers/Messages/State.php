@@ -18,6 +18,7 @@ namespace FastyBird\TuyaConnector\Consumers\Messages;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
@@ -37,59 +38,23 @@ final class State implements Consumer
 
 	use Nette\SmartObject;
 
-	/** @var Helpers\Property */
-	private Helpers\Property $propertyStateHelper;
-
-	/** @var DevicesModuleModels\DataStorage\IDevicesRepository */
-	private DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IDevicePropertiesRepository */
-	private DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelsRepository */
-	private DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository;
-
-	/** @var DevicesModuleModels\DataStorage\IChannelPropertiesRepository */
-	private DevicesModuleModels\DataStorage\IChannelPropertiesRepository$channelPropertiesRepository;
-
-	/** @var DevicesModuleModels\States\DeviceConnectionStateManager */
-	private DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param Helpers\Property $propertyStateHelper
-	 * @param DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository
-	 * @param DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository
-	 * @param DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository
-	 * @param DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		Helpers\Property $propertyStateHelper,
-		DevicesModuleModels\DataStorage\IDevicesRepository $devicesDataStorageRepository,
-		DevicesModuleModels\DataStorage\IDevicePropertiesRepository $devicePropertiesRepository,
-		DevicesModuleModels\DataStorage\IChannelsRepository $channelsRepository,
-		DevicesModuleModels\DataStorage\IChannelPropertiesRepository $channelPropertiesRepository,
-		DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
-		?Log\LoggerInterface $logger
-	) {
-		$this->propertyStateHelper = $propertyStateHelper;
-
-		$this->devicesDataStorageRepository = $devicesDataStorageRepository;
-		$this->devicePropertiesRepository = $devicePropertiesRepository;
-		$this->channelsRepository = $channelsRepository;
-		$this->channelPropertiesRepository = $channelPropertiesRepository;
-
-		$this->deviceConnectionStateManager = $deviceConnectionStateManager;
-
+		private readonly Helpers\Property $propertyStateHelper,
+		private readonly DevicesModuleModels\DataStorage\DevicesRepository $devicesDataStorageRepository,
+		private readonly DevicesModuleModels\DataStorage\DevicePropertiesRepository $devicePropertiesRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelsRepository $channelsRepository,
+		private readonly DevicesModuleModels\DataStorage\ChannelPropertiesRepository $channelPropertiesRepository,
+		private readonly DevicesModuleModels\States\DeviceConnectionStateManager $deviceConnectionStateManager,
+		Log\LoggerInterface|null $logger,
+	)
+	{
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function consume(Entities\Messages\Entity $entity): bool
 	{
@@ -99,14 +64,16 @@ final class State implements Consumer
 
 		$deviceItem = $this->devicesDataStorageRepository->findByIdentifier(
 			$entity->getConnector(),
-			$entity->getIdentifier()
+			$entity->getIdentifier(),
 		);
 
 		if ($deviceItem === null) {
 			return true;
 		}
 
-		$actualDeviceState = Metadata\Types\ConnectionStateType::get($entity->isOnline() ? Metadata\Types\ConnectionStateType::STATE_CONNECTED : Metadata\Types\ConnectionStateType::STATE_DISCONNECTED);
+		$actualDeviceState = Metadata\Types\ConnectionState::get(
+			$entity->isOnline() ? Metadata\Types\ConnectionState::STATE_CONNECTED : Metadata\Types\ConnectionState::STATE_DISCONNECTED,
+		);
 
 		// Check device state...
 		if (
@@ -115,13 +82,13 @@ final class State implements Consumer
 			// ... and if it is not ready, set it to ready
 			$this->deviceConnectionStateManager->setState(
 				$deviceItem,
-				$actualDeviceState
+				$actualDeviceState,
 			);
 
-			if ($actualDeviceState->equalsValue(Metadata\Types\ConnectionStateType::STATE_DISCONNECTED)) {
+			if ($actualDeviceState->equalsValue(Metadata\Types\ConnectionState::STATE_DISCONNECTED)) {
 				$devicePropertiesItems = $this->devicePropertiesRepository->findAllByDevice(
 					$deviceItem->getId(),
-					MetadataEntities\Modules\DevicesModule\DeviceDynamicPropertyEntity::class
+					MetadataEntities\DevicesModule\DeviceDynamicProperty::class,
 				);
 
 				foreach ($devicePropertiesItems as $propertyItem) {
@@ -129,7 +96,7 @@ final class State implements Consumer
 						$propertyItem,
 						Nette\Utils\ArrayHash::from([
 							'valid' => false,
-						])
+						]),
 					);
 				}
 
@@ -138,7 +105,7 @@ final class State implements Consumer
 				foreach ($channelItems as $channelItem) {
 					$channelProperties = $this->channelPropertiesRepository->findAllByChannel(
 						$channelItem->getId(),
-						MetadataEntities\Modules\DevicesModule\ChannelDynamicPropertyEntity::class
+						MetadataEntities\DevicesModule\ChannelDynamicProperty::class,
 					);
 
 					foreach ($channelProperties as $propertyItem) {
@@ -146,7 +113,7 @@ final class State implements Consumer
 							$propertyItem,
 							Nette\Utils\ArrayHash::from([
 								'valid' => false,
-							])
+							]),
 						);
 					}
 				}
@@ -157,12 +124,12 @@ final class State implements Consumer
 			'Consumed device state message',
 			[
 				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'   => 'state-message-consumer',
+				'type' => 'state-message-consumer',
 				'device' => [
 					'id' => $deviceItem->getId()->toString(),
 				],
-				'data'   => $entity->toArray(),
-			]
+				'data' => $entity->toArray(),
+			],
 		);
 
 		return true;

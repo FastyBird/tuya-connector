@@ -27,6 +27,7 @@ use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
 use Ramsey\Uuid;
+use function assert;
 
 /**
  * Device ip address consumer trait
@@ -36,10 +37,10 @@ use Ramsey\Uuid;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  *
- * @property-read DevicesModuleModels\Devices\IDevicesRepository $devicesRepository
- * @property-read DevicesModuleModels\Devices\Properties\IPropertiesRepository $propertiesRepository
- * @property-read DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager
- * @property-read DevicesModuleModels\DataStorage\IDevicePropertiesRepository $propertiesDataStorageRepository
+ * @property-read DevicesModuleModels\Devices\DevicesRepository $devicesRepository
+ * @property-read DevicesModuleModels\Devices\Properties\PropertiesRepository $propertiesRepository
+ * @property-read DevicesModuleModels\Devices\Properties\PropertiesManager $propertiesManager
+ * @property-read DevicesModuleModels\DataStorage\DevicePropertiesRepository $propertiesDataStorageRepository
  * @property-read Helpers\Database $databaseHelper
  * @property-read Log\LoggerInterface $logger
  */
@@ -47,40 +48,35 @@ trait TConsumeDeviceProperty
 {
 
 	/**
-	 * @param Uuid\UuidInterface $deviceId
-	 * @param string|bool|null $value
-	 * @param string $identifier
-	 *
-	 * @return void
-	 *
 	 * @throws DBAL\Exception
+	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function setDeviceProperty(
 		Uuid\UuidInterface $deviceId,
 		string|bool|null $value,
-		string $identifier
-	): void {
+		string $identifier,
+	): void
+	{
 		$propertyItem = $this->propertiesDataStorageRepository->findByIdentifier(
 			$deviceId,
-			$identifier
+			$identifier,
 		);
 
 		if ($propertyItem !== null && $value === null) {
-			/** @var DevicesModuleEntities\Devices\Properties\IProperty|null $propertyEntity */
 			$propertyEntity = $this->databaseHelper->query(
-				function () use ($propertyItem): ?DevicesModuleEntities\Devices\Properties\IProperty {
-					$findPropertyQuery = new DevicesModuleQueries\FindDevicePropertiesQuery();
+				function () use ($propertyItem): DevicesModuleEntities\Devices\Properties\Property|null {
+					$findPropertyQuery = new DevicesModuleQueries\FindDeviceProperties();
 					$findPropertyQuery->byId($propertyItem->getId());
 
 					return $this->propertiesRepository->findOneBy($findPropertyQuery);
-				}
+				},
 			);
 
 			if ($propertyEntity !== null) {
 				$this->databaseHelper->transaction(
 					function () use ($propertyEntity): void {
 						$this->propertiesManager->delete($propertyEntity);
-					}
+					},
 				);
 			}
 
@@ -92,7 +88,7 @@ trait TConsumeDeviceProperty
 		}
 
 		if (
-			$propertyItem instanceof MetadataEntities\Modules\DevicesModule\IDeviceStaticPropertyEntity
+			$propertyItem instanceof MetadataEntities\DevicesModule\DeviceVariableProperty
 			&& $propertyItem->getValue() === $value
 		) {
 			return;
@@ -100,16 +96,15 @@ trait TConsumeDeviceProperty
 
 		if (
 			$propertyItem !== null
-			&& !$propertyItem instanceof MetadataEntities\Modules\DevicesModule\IDeviceStaticPropertyEntity
+			&& !$propertyItem instanceof MetadataEntities\DevicesModule\DeviceVariableProperty
 		) {
-			/** @var DevicesModuleEntities\Devices\Properties\IProperty|null $propertyEntity */
 			$propertyEntity = $this->databaseHelper->query(
-				function () use ($propertyItem): ?DevicesModuleEntities\Devices\Properties\IProperty {
-					$findPropertyQuery = new DevicesModuleQueries\FindDevicePropertiesQuery();
+				function () use ($propertyItem): DevicesModuleEntities\Devices\Properties\Property|null {
+					$findPropertyQuery = new DevicesModuleQueries\FindDeviceProperties();
 					$findPropertyQuery->byId($propertyItem->getId());
 
 					return $this->propertiesRepository->findOneBy($findPropertyQuery);
-				}
+				},
 			);
 
 			if ($propertyEntity !== null) {
@@ -120,16 +115,16 @@ trait TConsumeDeviceProperty
 				$this->logger->warning(
 					'Device property is not valid type',
 					[
-						'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'     => 'message-consumer',
-						'device'   => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'message-consumer',
+						'device' => [
 							'id' => $deviceId->toString(),
 						],
 						'property' => [
-							'id'         => $propertyEntity->getPlainId(),
+							'id' => $propertyEntity->getPlainId(),
 							'identifier' => $identifier,
 						],
-					]
+					],
 				);
 			}
 
@@ -137,110 +132,105 @@ trait TConsumeDeviceProperty
 		}
 
 		if ($propertyItem === null) {
-			/** @var Entities\TuyaDevice|null $deviceEntity */
 			$deviceEntity = $this->databaseHelper->query(
-				function () use ($deviceId): ?Entities\TuyaDevice {
-					$findDeviceQuery = new DevicesModuleQueries\FindDevicesQuery();
+				function () use ($deviceId): Entities\TuyaDevice|null {
+					$findDeviceQuery = new DevicesModuleQueries\FindDevices();
 					$findDeviceQuery->byId($deviceId);
 
-					/** @var Entities\TuyaDevice|null $deviceEntity */
 					$deviceEntity = $this->devicesRepository->findOneBy(
 						$findDeviceQuery,
-						Entities\TuyaDevice::class
+						Entities\TuyaDevice::class,
 					);
+					assert($deviceEntity instanceof Entities\TuyaDevice || $deviceEntity === null);
 
 					return $deviceEntity;
-				}
+				},
 			);
 
 			if ($deviceEntity === null) {
 				return;
 			}
 
-			/** @var DevicesModuleEntities\Devices\Properties\IProperty $propertyEntity */
 			$propertyEntity = $this->databaseHelper->transaction(
-				function () use (
-					$deviceEntity,
-					$value,
-					$identifier
-				): DevicesModuleEntities\Devices\Properties\IProperty {
-					return $this->propertiesManager->create(Utils\ArrayHash::from([
-						'entity'     => DevicesModuleEntities\Devices\Properties\StaticProperty::class,
-						'device'     => $deviceEntity,
+				fn (): DevicesModuleEntities\Devices\Properties\Property => $this->propertiesManager->create(
+					Utils\ArrayHash::from([
+						'entity' => DevicesModuleEntities\Devices\Properties\Variable::class,
+						'device' => $deviceEntity,
 						'identifier' => $identifier,
-						'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_STRING),
-						'settable'   => false,
-						'queryable'  => false,
-						'value'      => $value,
-					]));
-				}
+						'dataType' => MetadataTypes\DataType::get(MetadataTypes\DataType::DATA_TYPE_STRING),
+						'settable' => false,
+						'queryable' => false,
+						'value' => $value,
+					]),
+				),
 			);
+			assert($propertyEntity instanceof DevicesModuleEntities\Devices\Properties\Property);
 
 			$this->logger->debug(
 				'Device ip address property was created',
 				[
-					'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'     => 'message-consumer',
-					'device'   => [
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'message-consumer',
+					'device' => [
 						'id' => $deviceId->toString(),
 					],
 					'property' => [
-						'id'         => $propertyEntity->getPlainId(),
+						'id' => $propertyEntity->getPlainId(),
 						'identifier' => $identifier,
 					],
-				]
+				],
 			);
 
 		} else {
-			/** @var DevicesModuleEntities\Devices\Properties\IProperty|null $propertyEntity */
 			$propertyEntity = $this->databaseHelper->query(
-				function () use ($propertyItem): ?DevicesModuleEntities\Devices\Properties\IProperty {
-					$findPropertyQuery = new DevicesModuleQueries\FindDevicePropertiesQuery();
+				function () use ($propertyItem): DevicesModuleEntities\Devices\Properties\Property|null {
+					$findPropertyQuery = new DevicesModuleQueries\FindDeviceProperties();
 					$findPropertyQuery->byId($propertyItem->getId());
 
 					return $this->propertiesRepository->findOneBy($findPropertyQuery);
-				}
+				},
 			);
 
 			if ($propertyEntity !== null) {
-				/** @var DevicesModuleEntities\Devices\Properties\IProperty $propertyEntity */
 				$propertyEntity = $this->databaseHelper->transaction(
-					function () use ($value, $propertyEntity): DevicesModuleEntities\Devices\Properties\IProperty {
-						return $this->propertiesManager->update($propertyEntity, Utils\ArrayHash::from([
+					fn (): DevicesModuleEntities\Devices\Properties\Property => $this->propertiesManager->update(
+						$propertyEntity,
+						Utils\ArrayHash::from([
 							'value' => $value,
-						]));
-					}
+						]),
+					),
 				);
+				assert($propertyEntity instanceof DevicesModuleEntities\Devices\Properties\Property);
 
 				$this->logger->debug(
 					'Device ip address property was updated',
 					[
-						'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'     => 'message-consumer',
-						'device'   => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'message-consumer',
+						'device' => [
 							'id' => $deviceId->toString(),
 						],
 						'property' => [
-							'id'         => $propertyEntity->getPlainId(),
+							'id' => $propertyEntity->getPlainId(),
 							'identifier' => $identifier,
 						],
-					]
+					],
 				);
 
 			} else {
 				$this->logger->error(
 					'Device ip address property could not be updated',
 					[
-						'source'   => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'     => 'message-consumer',
-						'device'   => [
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'message-consumer',
+						'device' => [
 							'id' => $deviceId->toString(),
 						],
 						'property' => [
-							'id'         => $propertyItem->getId()->toString(),
+							'id' => $propertyItem->getId()->toString(),
 							'identifier' => $identifier,
 						],
-					]
+					],
 				);
 			}
 		}

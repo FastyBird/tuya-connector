@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * OpenPulsar endpoint types
@@ -32,13 +33,13 @@ class OpenPulsarEndpoint extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const ENDPOINT_CHINA = 'wss://mqe.tuyacn.com:8285/';
+
 	public const ENDPOINT_AMERICA = 'wss://mqe.tuyaus.com:8285/';
+
 	public const ENDPOINT_EUROPE = 'wss://mqe.tuyaeu.com:8285/';
+
 	public const ENDPOINT_INDIA = 'wss://mqe.tuyain.com:8285/';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\Entities\Messages;
 
 use FastyBird\TuyaConnector\Types;
 use Ramsey\Uuid;
+use function array_merge;
 
 /**
  * Device state message entity
@@ -29,29 +30,16 @@ use Ramsey\Uuid;
 final class DeviceState extends Device
 {
 
-	/** @var bool */
-	private bool $online;
-
-	/**
-	 * @param Types\MessageSource $source
-	 * @param Uuid\UuidInterface $connector
-	 * @param string $identifier
-	 * @param bool $online
-	 */
 	public function __construct(
 		Types\MessageSource $source,
 		Uuid\UuidInterface $connector,
 		string $identifier,
-		bool $online
-	) {
+		private readonly bool $online,
+	)
+	{
 		parent::__construct($source, $connector, $identifier);
-
-		$this->online = $online;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isOnline(): bool
 	{
 		return $this->online;

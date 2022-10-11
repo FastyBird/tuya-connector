@@ -32,201 +32,104 @@ final class DiscoveredCloudDataPoint implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $device;
-
-	/** @var string */
-	private string $code;
-
-	/** @var string */
-	private string $name;
-
-	/** @var MetadataTypes\DataTypeType */
-	private MetadataTypes\DataTypeType $dataType;
-
-	/** @var string|null */
-	private ?string $unit;
-
-	/** @var string[] */
-	private array $range;
-
-	/** @var int|float|null */
-	private int|float|null $min;
-
-	/** @var int|float|null */
-	private int|float|null $max;
-
-	/** @var int|float|null */
-	private int|float|null $step;
-
-	/** @var int|float|null */
-	private int|float|null $scale;
-
-	/** @var bool */
-	private bool $queryable;
-
-	/** @var bool */
-	private bool $settable;
-
-	/** @var Types\MessageSource */
-	private Types\MessageSource $source;
-
 	/**
-	 * @param string $device
-	 * @param string $code
-	 * @param string $name
-	 * @param MetadataTypes\DataTypeType $dataType
-	 * @param string|null $unit
-	 * @param string[] $range
-	 * @param int|float|null $min
-	 * @param int|float|null $max
-	 * @param int|float|null $step
-	 * @param int|float|null $scale
-	 * @param bool $queryable
-	 * @param bool $settable
-	 * @param Types\MessageSource $source
+	 * @param Array<string> $range
 	 */
 	public function __construct(
-		string $device,
-		string $code,
-		string $name,
-		MetadataTypes\DataTypeType $dataType,
-		?string $unit,
-		array $range,
-		int|float|null $min,
-		int|float|null $max,
-		int|float|null $step,
-		int|float|null $scale,
-		bool $queryable,
-		bool $settable,
-		Types\MessageSource $source
-	) {
-		$this->device = $device;
-
-		$this->code = $code;
-		$this->name = $name;
-		$this->dataType = $dataType;
-		$this->unit = $unit;
-		$this->range = $range;
-		$this->min = $min;
-		$this->max = $max;
-		$this->step = $step;
-		$this->scale = $scale;
-		$this->queryable = $queryable;
-		$this->settable = $settable;
-		$this->source = $source;
+		private readonly string $device,
+		private readonly string $code,
+		private readonly string $name,
+		private readonly MetadataTypes\DataType $dataType,
+		private readonly string|null $unit,
+		private readonly array $range,
+		private readonly int|float|null $min,
+		private readonly int|float|null $max,
+		private readonly int|float|null $step,
+		private readonly int|float|null $scale,
+		private readonly bool $queryable,
+		private readonly bool $settable,
+		private readonly Types\MessageSource $source,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getDevice(): string
 	{
 		return $this->device;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getCode(): string
 	{
 		return $this->code;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getName(): string
 	{
 		return $this->name;
 	}
 
-	/**
-	 * @return MetadataTypes\DataTypeType
-	 */
-	public function getDataType(): MetadataTypes\DataTypeType
+	public function getDataType(): MetadataTypes\DataType
 	{
 		return $this->dataType;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getUnit(): ?string
+	public function getUnit(): string|null
 	{
 		return $this->unit;
 	}
 
 	/**
-	 * @return string[]
+	 * @return Array<string>
 	 */
 	public function getRange(): array
 	{
 		return $this->range;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getMin(): float|int|null
 	{
 		return $this->min;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getMax(): float|int|null
 	{
 		return $this->max;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getStep(): float|int|null
 	{
 		return $this->step;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getScale(): float|int|null
 	{
 		return $this->scale;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isQueryable(): bool
 	{
 		return $this->queryable;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isSettable(): bool
 	{
 		return $this->settable;
 	}
 
 	/**
-	 * @return Array<int, Array<int, string|int|float|null>>|string[]|null
+	 * @return Array<int, Array<int, (string|int|float|null)>>|Array<string>|null
 	 */
-	public function getFormat(): ?array
+	public function getFormat(): array|null
 	{
 		if (
 			(
-				$this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_CHAR)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_UCHAR)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_SHORT)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_USHORT)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_INT)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_UINT)
-				|| $this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_FLOAT)
+				$this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_CHAR)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_UCHAR)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_SHORT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_USHORT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_INT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_UINT)
+				|| $this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_FLOAT)
 			) && (
 				$this->getMin() !== null
 				|| $this->getMax() !== null
@@ -234,17 +137,16 @@ final class DiscoveredCloudDataPoint implements Entity
 		) {
 			return [
 				[
-					MetadataTypes\DataTypeShortType::DATA_TYPE_FLOAT,
+					MetadataTypes\DataTypeShort::DATA_TYPE_FLOAT,
 					$this->getMin(),
 				],
 				[
-					MetadataTypes\DataTypeShortType::DATA_TYPE_FLOAT,
+					MetadataTypes\DataTypeShort::DATA_TYPE_FLOAT,
 					$this->getMax(),
 				],
 			];
-
 		} elseif (
-			$this->getDataType()->equalsValue(MetadataTypes\DataTypeType::DATA_TYPE_ENUM)
+			$this->getDataType()->equalsValue(MetadataTypes\DataType::DATA_TYPE_ENUM)
 			&& $this->getRange() !== []
 		) {
 			return $this->getRange();
@@ -253,9 +155,6 @@ final class DiscoveredCloudDataPoint implements Entity
 		return null;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getSource(): Types\MessageSource
 	{
 		return $this->source;
@@ -269,18 +168,18 @@ final class DiscoveredCloudDataPoint implements Entity
 		return [
 			'device' => $this->getDevice(),
 
-			'code'      => $this->getCode(),
-			'name'      => $this->getName(),
+			'code' => $this->getCode(),
+			'name' => $this->getName(),
 			'data_type' => $this->getDataType()->getValue(),
-			'unit'      => $this->getUnit(),
-			'range'     => $this->getRange(),
-			'min'       => $this->getMin(),
-			'max'       => $this->getMax(),
-			'step'      => $this->getStep(),
-			'scale'     => $this->getScale(),
+			'unit' => $this->getUnit(),
+			'range' => $this->getRange(),
+			'min' => $this->getMin(),
+			'max' => $this->getMax(),
+			'step' => $this->getStep(),
+			'scale' => $this->getScale(),
 			'queryable' => $this->isQueryable(),
-			'settable'  => $this->isSettable(),
-			'source'    => $this->getSource()->getValue(),
+			'settable' => $this->isSettable(),
+			'source' => $this->getSource()->getValue(),
 		];
 	}
 

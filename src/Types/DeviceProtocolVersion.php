@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Types;
 
 use Consistence;
+use function strval;
 
 /**
  * Device protocol version types
@@ -32,11 +33,9 @@ class DeviceProtocolVersion extends Consistence\Enum\Enum
 	 * Define versions
 	 */
 	public const VERSION_V31 = '3.1';
+
 	public const VERSION_V33 = '3.3';
 
-	/**
-	 * @return string
-	 */
 	public function __toString(): string
 	{
 		return strval(self::getValue());

@@ -17,6 +17,8 @@ namespace FastyBird\TuyaConnector\Entities\API;
 
 use FastyBird\TuyaConnector\Types;
 use Nette;
+use function array_map;
+use function is_array;
 
 /**
  * Local api device raw message entity
@@ -31,76 +33,41 @@ final class DeviceRawMessage implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $identifier;
-
-	/** @var Types\LocalDeviceCommand */
-	private Types\LocalDeviceCommand $command;
-
-	/** @var int */
-	private int $sequence;
-
-	/** @var int|null */
-	private ?int $returnCode;
-
-	/** @var string|Entity|Entity[]|null */
-	private string|Entity|array|null $data;
-
 	/**
-	 * @param string $identifier
-	 * @param Types\LocalDeviceCommand $command
-	 * @param int $sequence
-	 * @param int|null $returnCode
-	 * @param string|Entity|Entity[]|null $data
+	 * @param string|Entity|Array<Entity>|null $data
 	 */
 	public function __construct(
-		string $identifier,
-		Types\LocalDeviceCommand $command,
-		int $sequence,
-		?int $returnCode,
-		string|Entity|array|null $data
-	) {
-		$this->identifier = $identifier;
-		$this->command = $command;
-		$this->sequence = $sequence;
-		$this->returnCode = $returnCode;
-		$this->data = $data;
+		private readonly string $identifier,
+		private readonly Types\LocalDeviceCommand $command,
+		private readonly int $sequence,
+		private readonly int|null $returnCode,
+		private readonly string|Entity|array|null $data,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getIdentifier(): string
 	{
 		return $this->identifier;
 	}
 
-	/**
-	 * @return Types\LocalDeviceCommand
-	 */
 	public function getCommand(): Types\LocalDeviceCommand
 	{
 		return $this->command;
 	}
 
-	/**
-	 * @return int
-	 */
 	public function getSequence(): int
 	{
 		return $this->sequence;
 	}
 
-	/**
-	 * @return int|null
-	 */
-	public function getReturnCode(): ?int
+	public function getReturnCode(): int|null
 	{
 		return $this->returnCode;
 	}
 
 	/**
-	 * @return string|Entity|Entity[]|null
+	 * @return string|Entity|Array<Entity>|null
 	 */
 	public function getData(): string|Entity|array|null
 	{
@@ -117,11 +84,14 @@ final class DeviceRawMessage implements Entity
 			'command' => $this->getCommand()->getValue(),
 			'sequence' => $this->getSequence(),
 			'return_code' => $this->getReturnCode(),
-			'data' => $this->getData() instanceof Entity ? $this->getData()->toArray() : (is_array($this->getData()) ? array_map(function (
-				Entity $entity
-			): array {
-				return $entity->toArray();
-			}, $this->getData()) : $this->getData()),
+			'data' => $this->getData() instanceof Entity ? $this->getData()->toArray() : (is_array(
+				$this->getData(),
+			) ? array_map(
+				static fn (
+					Entity $entity,
+				): array => $entity->toArray(),
+				$this->getData(),
+			) : $this->getData()),
 		];
 	}
 

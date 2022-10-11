@@ -28,6 +28,22 @@ use ReflectionType;
 use Reflector;
 use stdClass;
 use Throwable;
+use function array_combine;
+use function array_keys;
+use function array_merge;
+use function call_user_func_array;
+use function class_exists;
+use function get_object_vars;
+use function in_array;
+use function is_array;
+use function is_callable;
+use function method_exists;
+use function preg_replace_callback;
+use function property_exists;
+use function strtolower;
+use function strtoupper;
+use function trim;
+use function ucfirst;
 
 /**
  * API data entity factory
@@ -42,9 +58,6 @@ final class EntityFactory
 
 	/**
 	 * @param class-string<T> $entityClass
-	 * @param Utils\ArrayHash $data
-	 *
-	 * @return Entities\API\Entity
 	 *
 	 * @template T of Entities\API\Entity
 	 *
@@ -52,15 +65,16 @@ final class EntityFactory
 	 */
 	public function build(
 		string $entityClass,
-		Utils\ArrayHash $data
-	): Entities\API\Entity {
+		Utils\ArrayHash $data,
+	): Entities\API\Entity
+	{
 		if (!class_exists($entityClass)) {
 			throw new Exceptions\InvalidState('Entity could not be created');
 		}
 
 		try {
 			$decoded = $this->convertKeys($data);
-			//$decoded = Utils\Json::decode(Utils\Json::encode($decoded), Utils\Json::FORCE_ARRAY);
+			$decoded = Utils\Json::decode(Utils\Json::encode($decoded), Utils\Json::FORCE_ARRAY);
 
 			if (is_array($decoded)) {
 				$decoded = $this->convertToObject($decoded);
@@ -78,11 +92,11 @@ final class EntityFactory
 
 			$constructor = $rc->getConstructor();
 
-			if ($constructor !== null) {
-				$entity = $rc->newInstanceArgs($this->autowireArguments($constructor, $decoded));
-			} else {
-				$entity = new $entityClass();
-			}
+			$entity = $constructor !== null
+				? $rc->newInstanceArgs(
+					$this->autowireArguments($constructor, $decoded),
+				)
+				: new $entityClass();
 		} catch (Throwable $ex) {
 			throw new Exceptions\InvalidState('Entity could not be created', 0, $ex);
 		}
@@ -123,7 +137,6 @@ final class EntityFactory
 					}
 				} catch (ReflectionException) {
 					continue;
-
 				} catch (Throwable $ex) {
 					throw new Exceptions\InvalidState('Entity could not be created', 0, $ex);
 				}
@@ -134,15 +147,15 @@ final class EntityFactory
 	}
 
 	/**
-	 * @param Utils\ArrayHash $data
-	 *
 	 * @return Array<string, mixed>
 	 */
 	protected function convertKeys(Utils\ArrayHash $data): array
 	{
-		$keys = preg_replace_callback('/_(.)/', function (array $m): string {
-			return strtoupper($m[1]);
-		}, array_keys((array) $data));
+		$keys = preg_replace_callback(
+			'/_(.)/',
+			static fn (array $m): string => strtoupper($m[1]),
+			array_keys((array) $data),
+		);
 
 		if ($keys === null) {
 			return [];
@@ -154,15 +167,13 @@ final class EntityFactory
 	/**
 	 * This method was inspired by same method in Nette framework
 	 *
-	 * @param ReflectionMethod $method
-	 * @param stdClass $decoded
-	 *
 	 * @return Array<int, mixed>
 	 */
 	private function autowireArguments(
 		ReflectionMethod $method,
-		stdClass $decoded
-	): array {
+		stdClass $decoded,
+	): array
+	{
 		$res = [];
 
 		foreach ($method->getParameters() as $num => $parameter) {
@@ -195,12 +206,7 @@ final class EntityFactory
 		return $res;
 	}
 
-	/**
-	 * @param ReflectionParameter $param
-	 *
-	 * @return string|NULL
-	 */
-	private function getParameterType(ReflectionParameter $param): ?string
+	private function getParameterType(ReflectionParameter $param): string|null
 	{
 		if ($param->hasType()) {
 			$rt = $param->getType();
@@ -208,7 +214,9 @@ final class EntityFactory
 			if ($rt instanceof ReflectionType && method_exists($rt, 'getName')) {
 				$type = $rt->getName();
 
-				return strtolower($type) === 'self' && $param->getDeclaringClass() !== null ? $param->getDeclaringClass()
+				return strtolower(
+					$type,
+				) === 'self' && $param->getDeclaringClass() !== null ? $param->getDeclaringClass()
 					->getName() : $type;
 			}
 		}
@@ -217,9 +225,7 @@ final class EntityFactory
 	}
 
 	/**
-	 * @param Reflector $rc
-	 *
-	 * @return ReflectionProperty[]
+	 * @return Array<ReflectionProperty>
 	 */
 	private function getProperties(Reflector $rc): array
 	{
@@ -240,12 +246,7 @@ final class EntityFactory
 		return $properties;
 	}
 
-	/**
-	 * @param ReflectionProperty $rp
-	 *
-	 * @return string|NULL
-	 */
-	private function parseVarAnnotation(ReflectionProperty $rp): ?string
+	private function parseVarAnnotation(ReflectionProperty $rp): string|null
 	{
 		if ($rp->getDocComment() === false) {
 			return null;
@@ -265,8 +266,6 @@ final class EntityFactory
 
 	/**
 	 * @param Array<string, mixed> $array
-	 *
-	 * @return stdClass
 	 */
 	private function convertToObject(array $array): stdClass
 	{

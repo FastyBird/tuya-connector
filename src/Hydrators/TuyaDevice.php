@@ -21,19 +21,15 @@ use FastyBird\TuyaConnector\Entities;
 /**
  * Tuya device entity hydrator
  *
+ * @phpstan-extends DevicesModuleHydrators\Devices\Device<Entities\TuyaDevice>
+ *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Hydrators
- *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
- *
- * @phpstan-extends DevicesModuleHydrators\Devices\DeviceHydrator<Entities\TuyaDevice>
  */
-final class TuyaDevice extends DevicesModuleHydrators\Devices\DeviceHydrator
+final class TuyaDevice extends DevicesModuleHydrators\Devices\Device
 {
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getEntityName(): string
 	{
 		return Entities\TuyaDevice::class;

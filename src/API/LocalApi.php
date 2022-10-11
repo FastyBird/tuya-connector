@@ -31,7 +31,30 @@ use React\EventLoop;
 use React\Promise;
 use React\Socket;
 use Throwable;
+use function array_key_exists;
+use function array_map;
+use function array_merge;
+use function array_slice;
+use function base64_decode;
+use function base64_encode;
+use function count;
+use function crc32;
+use function intval;
+use function is_bool;
+use function is_numeric;
+use function is_string;
+use function mb_convert_encoding;
+use function md5;
+use function openssl_decrypt;
+use function openssl_encrypt;
+use function ord;
+use function pack;
 use function React\Async\async;
+use function sprintf;
+use function strval;
+use function unpack;
+use const DIRECTORY_SEPARATOR;
+use const OPENSSL_RAW_DATA;
 
 /**
  * Local UDP device interface
@@ -47,50 +70,37 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	use Nette\SmartObject;
 	use Evenement\EventEmitterTrait;
 
-	private const SOCKET_PORT = 6668;
+	private const SOCKET_PORT = 6_668;
 
 	private const HEARTBEAT_INTERVAL = 7.0;
+
 	private const HEARTBEAT_SEQ_NO = -100;
+
 	private const HEARTBEAT_TIMEOUT = 10.0;
 
 	private const WAIT_FOR_REPLY_TIMEOUT = 5.0;
 
 	public const DP_STATUS_MESSAGE_SCHEMA_FILENAME = 'localapi_dp_query.json';
+
 	public const DP_QUERY_MESSAGE_SCHEMA_FILENAME = 'localapi_dp_status.json';
+
 	public const WIFI_QUERY_MESSAGE_SCHEMA_FILENAME = 'localapi_wifi_query.json';
 
-	/** @var string */
-	private string $identifier;
-
-	/** @var string */
 	private string $gateway;
 
-	/** @var string */
-	private string $localKey;
-
-	/** @var string */
-	private string $ipAddress;
-
-	/** @var int */
 	private int $sequenceNr = 0;
 
-	/** @var bool */
 	private bool $connecting = false;
 
-	/** @var bool */
 	private bool $connected = false;
 
-	/** @var DateTimeInterface|null */
-	private ?DateTimeInterface $lastConnectAttempt = null;
+	private DateTimeInterface|null $lastConnectAttempt = null;
 
-	/** @var DateTimeInterface|null */
-	private ?DateTimeInterface $lastHeartbeat = null;
+	private DateTimeInterface|null $lastHeartbeat = null;
 
-	/** @var DateTimeInterface|null */
-	private ?DateTimeInterface $disconnected = null;
+	private DateTimeInterface|null $disconnected = null;
 
-	/** @var DateTimeInterface|null */
-	private ?DateTimeInterface $lost = null;
+	private DateTimeInterface|null $lost = null;
 
 	/** @var Array<int, Promise\Deferred> */
 	private array $messagesListeners = [];
@@ -98,65 +108,29 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/** @var Array<int, EventLoop\TimerInterface> */
 	private array $messagesListenersTimers = [];
 
-	/** @var EventLoop\TimerInterface|null */
 	private EventLoop\TimerInterface|null $heartBeatTimer = null;
 
-	/** @var Types\DeviceProtocolVersion */
-	private Types\DeviceProtocolVersion $protocolVersion;
+	private Socket\ConnectionInterface|null $connection = null;
 
-	/** @var Socket\ConnectionInterface|null */
-	private ?Socket\ConnectionInterface $connection = null;
-
-	/** @var MetadataSchemas\IValidator */
-	private MetadataSchemas\IValidator $schemaValidator;
-
-	/** @var DateTimeFactory\DateTimeFactory */
-	private DateTimeFactory\DateTimeFactory $dateTimeFactory;
-
-	/** @var EventLoop\LoopInterface */
-	private EventLoop\LoopInterface $eventLoop;
-
-	/** @var Log\LoggerInterface */
 	private Log\LoggerInterface $logger;
 
-	/**
-	 * @param string $identifier
-	 * @param string|null $gateway
-	 * @param string $localKey
-	 * @param string $ipAddress
-	 * @param Types\DeviceProtocolVersion $protocolVersion
-	 * @param MetadataSchemas\IValidator $schemaValidator
-	 * @param DateTimeFactory\DateTimeFactory $dateTimeFactory
-	 * @param EventLoop\LoopInterface $eventLoop
-	 * @param Log\LoggerInterface|null $logger
-	 */
 	public function __construct(
-		string $identifier,
-		?string $gateway,
-		string $localKey,
-		string $ipAddress,
-		Types\DeviceProtocolVersion $protocolVersion,
-		MetadataSchemas\IValidator $schemaValidator,
-		DateTimeFactory\DateTimeFactory $dateTimeFactory,
-		EventLoop\LoopInterface $eventLoop,
-		?Log\LoggerInterface $logger = null
-	) {
-		$this->identifier = $identifier;
+		private readonly string $identifier,
+		string|null $gateway,
+		private readonly string $localKey,
+		private readonly string $ipAddress,
+		private readonly Types\DeviceProtocolVersion $protocolVersion,
+		private readonly MetadataSchemas\Validator $schemaValidator,
+		private readonly DateTimeFactory\Factory $dateTimeFactory,
+		private readonly EventLoop\LoopInterface $eventLoop,
+		Log\LoggerInterface|null $logger = null,
+	)
+	{
 		$this->gateway = $gateway ?? $identifier;
-		$this->localKey = $localKey;
-		$this->ipAddress = $ipAddress;
-		$this->protocolVersion = $protocolVersion;
-
-		$this->schemaValidator = $schemaValidator;
-		$this->dateTimeFactory = $dateTimeFactory;
-		$this->eventLoop = $eventLoop;
 
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
-	/**
-	 * @return Promise\PromiseInterface
-	 */
 	public function connect(): Promise\PromiseInterface
 	{
 		$this->messagesListeners = [];
@@ -185,7 +159,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 					$this->connection = $connection;
 
-					$this->connection->on('data', function ($chunk) {
+					$this->connection->on('data', function ($chunk): void {
 						$message = $this->decodePayload($chunk);
 
 						if ($message !== null) {
@@ -204,11 +178,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 									'Device has replied to heartbeat',
 									[
 										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-										'type'   => 'localapi-api',
+										'type' => 'localapi-api',
 										'device' => [
 											'identifier' => $this->identifier,
 										],
-									]
+									],
 								);
 							}
 
@@ -216,15 +190,15 @@ final class LocalApi implements Evenement\EventEmitterInterface
 								$this->logger->debug(
 									'Device has reported its status',
 									[
-										'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-										'type'    => 'localapi-api',
+										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+										'type' => 'localapi-api',
 										'message' => [
 											'data' => $message->getData(),
 										],
-										'device'  => [
+										'device' => [
 											'identifier' => $this->identifier,
 										],
-									]
+									],
 								);
 							}
 
@@ -232,37 +206,37 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						}
 					});
 
-					$this->connection->on('error', function (Throwable $ex) {
+					$this->connection->on('error', function (Throwable $ex): void {
 						$this->lost();
 
 						$this->logger->error(
 							'An error occurred on device connection',
 							[
-								'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'      => 'localapi-api',
+								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+								'type' => 'localapi-api',
 								'exception' => [
 									'message' => $ex->getMessage(),
-									'code'    => $ex->getCode(),
+									'code' => $ex->getCode(),
 								],
-								'device'    => [
+								'device' => [
 									'identifier' => $this->identifier,
 								],
-							]
+							],
 						);
 					});
 
-					$this->connection->on('close', function () {
+					$this->connection->on('close', function (): void {
 						$this->disconnect();
 
 						$this->logger->debug(
 							'Connection with device was closed',
 							[
 								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'   => 'localapi-api',
+								'type' => 'localapi-api',
 								'device' => [
 									'identifier' => $this->identifier,
 								],
-							]
+							],
 						);
 					});
 
@@ -271,7 +245,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						async(function (): void {
 							if (
 								$this->lastHeartbeat !== null
-								&& ($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp()) >= self::HEARTBEAT_TIMEOUT
+								&&
+									($this->dateTimeFactory->getNow()->getTimestamp() - $this->lastHeartbeat->getTimestamp())
+									>= self::HEARTBEAT_TIMEOUT
 							) {
 								$this->lost();
 
@@ -280,20 +256,20 @@ final class LocalApi implements Evenement\EventEmitterInterface
 									'Sending ping to device',
 									[
 										'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-										'type'   => 'localapi-api',
+										'type' => 'localapi-api',
 										'device' => [
 											'identifier' => $this->identifier,
 										],
-									]
+									],
 								);
 
 								$this->sendRequest(
 									Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_HEART_BEAT),
 									null,
-									self::HEARTBEAT_SEQ_NO
+									self::HEARTBEAT_SEQ_NO,
 								);
 							}
-						})
+						}),
 					);
 
 					$this->emit('connected');
@@ -317,16 +293,16 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			$this->logger->error(
 				'Could not create connector',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'localapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'localapi-api',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-					'device'    => [
+					'device' => [
 						'identifier' => $this->identifier,
 					],
-				]
+				],
 			);
 
 			$this->emit('error', [$ex]);
@@ -337,9 +313,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		return $deferred->promise();
 	}
 
-	/**
-	 * @return void
-	 */
 	public function disconnect(): void
 	{
 		$this->connection?->close();
@@ -363,57 +336,36 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		}
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isConnecting(): bool
 	{
 		return $this->connecting;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isConnected(): bool
 	{
 		return $this->connection !== null && !$this->connecting && $this->connected;
 	}
 
-	/**
-	 * @return DateTimeInterface|null
-	 */
-	public function getLastHeartbeat(): ?DateTimeInterface
+	public function getLastHeartbeat(): DateTimeInterface|null
 	{
 		return $this->lastHeartbeat;
 	}
 
-	/**
-	 * @return DateTimeInterface|null
-	 */
-	public function getLastConnectAttempt(): ?DateTimeInterface
+	public function getLastConnectAttempt(): DateTimeInterface|null
 	{
 		return $this->lastConnectAttempt;
 	}
 
-	/**
-	 * @return DateTimeInterface|null
-	 */
-	public function getDisconnected(): ?DateTimeInterface
+	public function getDisconnected(): DateTimeInterface|null
 	{
 		return $this->disconnected;
 	}
 
-	/**
-	 * @return DateTimeInterface|null
-	 */
-	public function getLost(): ?DateTimeInterface
+	public function getLost(): DateTimeInterface|null
 	{
 		return $this->lost;
 	}
 
-	/**
-	 * @return Promise\PromiseInterface
-	 */
 	public function readStates(): Promise\PromiseInterface
 	{
 		$deferred = new Promise\Deferred();
@@ -429,7 +381,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
-			})
+			}),
 		);
 
 		return $deferred->promise();
@@ -437,8 +389,6 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 	/**
 	 * @param Array<string, int|float|string|bool> $states
-	 *
-	 * @return Promise\PromiseInterface
 	 */
 	public function writeStates(array $states): Promise\PromiseInterface
 	{
@@ -446,7 +396,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 		$sequenceNr = $this->sendRequest(
 			Types\LocalDeviceCommand::get(Types\LocalDeviceCommand::CMD_CONTROL),
-			$states
+			$states,
 		);
 
 		$this->messagesListeners[$sequenceNr] = $deferred;
@@ -458,26 +408,17 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 				unset($this->messagesListeners[$sequenceNr]);
 				unset($this->messagesListenersTimers[$sequenceNr]);
-			})
+			}),
 		);
 
 		return $deferred->promise();
 	}
 
-	/**
-	 * @param string $idx
-	 * @param int|float|string|bool $value
-	 *
-	 * @return Promise\PromiseInterface
-	 */
 	public function writeState(string $idx, int|float|string|bool $value): Promise\PromiseInterface
 	{
 		return $this->writeStates([$idx => $value]);
 	}
 
-	/**
-	 * @return void
-	 */
 	private function lost(): void
 	{
 		$this->emit('lost');
@@ -488,17 +429,14 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	}
 
 	/**
-	 * @param Types\LocalDeviceCommand $command
 	 * @param Array<string, int|float|string|bool>|null $data
-	 * @param int|null $sequenceNr
-	 *
-	 * @return int
 	 */
 	private function sendRequest(
 		Types\LocalDeviceCommand $command,
-		?array $data = null,
-		?int $sequenceNr = null
-	): int {
+		array|null $data = null,
+		int|null $sequenceNr = null,
+	): int
+	{
 		if ($sequenceNr === null) {
 			$this->sequenceNr++;
 
@@ -513,36 +451,35 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		$this->logger->debug(
 			'Sending message to device',
 			[
-				'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-				'type'    => 'localapi-api',
+				'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+				'type' => 'localapi-api',
 				'message' => [
-					'command'  => $command->getValue(),
-					'data'     => $data,
+					'command' => $command->getValue(),
+					'data' => $data,
 					'sequence' => $sequenceNr,
 				],
-				'device'  => [
+				'device' => [
 					'identifier' => $this->identifier,
 				],
-			]
+			],
 		);
 
-		$this->connection?->write((string) pack('C*', ...$payload));
+		$this->connection?->write(pack('C*', ...$payload));
 
 		return $this->sequenceNr;
 	}
 
 	/**
-	 * @param int $sequenceNr
-	 * @param Types\LocalDeviceCommand $command
 	 * @param Array<string, string|int|float|bool>|null $data
 	 *
-	 * @return int[]
+	 * @return Array<int>
 	 */
 	private function buildPayload(
 		int $sequenceNr,
 		Types\LocalDeviceCommand $command,
-		?array $data = null
-	): array {
+		array|null $data = null,
+	): array
+	{
 		$header = [];
 
 		if ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V31)) {
@@ -557,7 +494,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					$payload,
 					'AES-128-ECB',
 					mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-					OPENSSL_RAW_DATA
+					OPENSSL_RAW_DATA,
 				);
 
 				if ($payload === false) {
@@ -580,7 +517,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 				$header = array_merge(
 					(array) unpack('C*', '3.1'),
-					(array) unpack('C*', $hexDigest)
+					(array) unpack('C*', $hexDigest),
 				);
 
 				$payload = array_merge($header, (array) unpack('C*', $payload));
@@ -593,12 +530,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				throw new Exceptions\InvalidState('Payload could not be build');
 			}
 
-			return $this->stitchPayload(
-				$sequenceNr,
-				$payload,
-				$command
-			);
-
+			return $this->stitchPayload($sequenceNr, $payload, $command);
 		} elseif ($this->protocolVersion->equalsValue(Types\DeviceProtocolVersion::VERSION_V33)) {
 			if (!$command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY)) {
 				$header = array_merge((array) unpack('C*', '3.3'), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
@@ -614,7 +546,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$payload,
 				'AES-128-ECB',
 				mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-				OPENSSL_RAW_DATA
+				OPENSSL_RAW_DATA,
 			);
 
 			if ($payload === false) {
@@ -624,21 +556,16 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			return $this->stitchPayload(
 				$sequenceNr,
 				array_merge($header, (array) unpack('C*', $payload)),
-				$command
+				$command,
 			);
 		}
 
 		throw new Exceptions\InvalidState(
-			sprintf('Unknown protocol %s', strval($this->protocolVersion->getValue()))
+			sprintf('Unknown protocol %s', strval($this->protocolVersion->getValue())),
 		);
 	}
 
-	/**
-	 * @param string $data
-	 *
-	 * @return Entities\API\DeviceRawMessage|null
-	 */
-	private function decodePayload(string $data): ?Entities\API\DeviceRawMessage
+	private function decodePayload(string $data): Entities\API\DeviceRawMessage|null
 	{
 		$buffer = unpack('C*', $data);
 
@@ -652,16 +579,16 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$this->logger->error(
 					'Received unknown command',
 					[
-						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'    => 'localapi-api',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'localapi-api',
 						'message' => [
-							'command'  => $command,
+							'command' => $command,
 							'sequence' => $sequenceNr,
 						],
-						'device'  => [
+						'device' => [
 							'identifier' => $this->identifier,
 						],
-					]
+					],
 				);
 
 				return null;
@@ -671,7 +598,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 			$size = (int) (($buffer[13] << 24) + ($buffer[14] << 16) + ($buffer[15] << 8) + $buffer[16]);
 			$returnCode = (int) (($buffer[17] << 24) + ($buffer[18] << 16) + ($buffer[19] << 8) + $buffer[20]);
-			$crc = (int) (($buffer[$bufferSize - 7] << 24) + ($buffer[$bufferSize - 6] << 16) + ($buffer[$bufferSize - 5] << 8) + $buffer[$bufferSize - 4]);
+			$crc = (int) ($buffer[$bufferSize - 7] << 24 + $buffer[$bufferSize - 6] << 16 + $buffer[$bufferSize - 5] << 8 + $buffer[$bufferSize - 4]);
 
 			$hasReturnCode = ($returnCode & 0xFFFFFF00) === 0;
 
@@ -688,7 +615,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 				$payload = null;
 
-				if ((($buffer[21] << 8) + $buffer[22]) === ord('{')) {
+				if (($buffer[21] << 8) + $buffer[22] === ord('{')) {
 					$payload = pack('C*', ...$data);
 				} elseif (
 					$buffer[21] === ord('3')
@@ -699,11 +626,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						'Received message from device in version 3.1. This code is untested',
 						[
 							'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-							'type'   => 'localapi-api',
+							'type' => 'localapi-api',
 							'device' => [
 								'identifier' => $this->identifier,
 							],
-						]
+						],
 					);
 
 					$data = array_slice($data, 3); // Remove version header
@@ -712,10 +639,10 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					$data = array_slice($data, 16);
 
 					$payload = openssl_decrypt(
-						base64_decode(pack('C*', ...$data)),
+						strval(base64_decode(pack('C*', ...$data), true)),
 						'AES-128-ECB',
 						mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-						OPENSSL_RAW_DATA
+						OPENSSL_RAW_DATA,
 					);
 
 					if ($payload === false) {
@@ -723,11 +650,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 							'Received message payload could not be decoded',
 							[
 								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'   => 'localapi-api',
+								'type' => 'localapi-api',
 								'device' => [
 									'identifier' => $this->identifier,
 								],
-							]
+							],
 						);
 
 						return null;
@@ -737,7 +664,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$payload = null;
 
 				if ($size > 12) {
-					$data = array_slice($buffer, 20, ($size + 8) - 20);
+					$data = array_slice($buffer, 20, $size + 8 - 20);
 
 					if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
 						$data = array_slice($data, 15);
@@ -747,7 +674,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 						pack('C*', ...$data),
 						'AES-128-ECB',
 						mb_convert_encoding($this->localKey, 'ISO-8859-1', 'UTF-8'),
-						OPENSSL_RAW_DATA
+						OPENSSL_RAW_DATA,
 					);
 
 					if ($payload === false) {
@@ -755,11 +682,11 @@ final class LocalApi implements Evenement\EventEmitterInterface
 							'Received message payload could not be decoded',
 							[
 								'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-								'type'   => 'localapi-api',
+								'type' => 'localapi-api',
 								'device' => [
 									'identifier' => $this->identifier,
 								],
-							]
+							],
 						);
 
 						return null;
@@ -769,17 +696,17 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$this->logger->warning(
 					'Received message from device with unsupported version',
 					[
-						'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-						'type'    => 'localapi-api',
+						'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+						'type' => 'localapi-api',
 						'message' => [
-							'command'    => $command->getValue(),
-							'sequence'   => $sequenceNr,
+							'command' => $command->getValue(),
+							'sequence' => $sequenceNr,
 							'returnCode' => $returnCode,
 						],
-						'device'  => [
+						'device' => [
 							'identifier' => $this->identifier,
 						],
-					]
+					],
 				);
 
 				return null;
@@ -788,18 +715,18 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			$this->logger->debug(
 				'Received message from device',
 				[
-					'source'  => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'    => 'localapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'localapi-api',
 					'message' => [
-						'command'    => $command->getValue(),
-						'data'       => $payload,
-						'sequence'   => $sequenceNr,
+						'command' => $command->getValue(),
+						'data' => $payload,
+						'sequence' => $sequenceNr,
 						'returnCode' => $returnCode,
 					],
-					'device'  => [
+					'device' => [
 						'identifier' => $this->identifier,
 					],
-				]
+				],
 			);
 
 			if (
@@ -809,17 +736,15 @@ final class LocalApi implements Evenement\EventEmitterInterface
 					|| $command->equalsValue(Types\LocalDeviceCommand::CMD_DP_QUERY_NEW)
 				) && $payload !== null
 			) {
-				if ($command->equalsValue(Types\LocalDeviceCommand::CMD_STATUS)) {
-					$parsedMessage = $this->schemaValidator->validate(
-						$payload,
-						$this->getSchemaFilePath(self::DP_STATUS_MESSAGE_SCHEMA_FILENAME)
-					);
-				} else {
-					$parsedMessage = $this->schemaValidator->validate(
-						$payload,
-						$this->getSchemaFilePath(self::DP_QUERY_MESSAGE_SCHEMA_FILENAME)
-					);
-				}
+				$parsedMessage = $command->equalsValue(
+					Types\LocalDeviceCommand::CMD_STATUS,
+				) ? $this->schemaValidator->validate(
+					$payload,
+					$this->getSchemaFilePath(self::DP_STATUS_MESSAGE_SCHEMA_FILENAME),
+				) : $this->schemaValidator->validate(
+					$payload,
+					$this->getSchemaFilePath(self::DP_QUERY_MESSAGE_SCHEMA_FILENAME),
+				);
 
 				$entityOrData = [];
 
@@ -834,14 +759,15 @@ final class LocalApi implements Evenement\EventEmitterInterface
 			) {
 				$parsedMessage = $this->schemaValidator->validate(
 					$payload,
-					$this->getSchemaFilePath(self::WIFI_QUERY_MESSAGE_SCHEMA_FILENAME)
+					$this->getSchemaFilePath(self::WIFI_QUERY_MESSAGE_SCHEMA_FILENAME),
 				);
 
 				$entityOrData = new Entities\API\DeviceWifiScan(
 					$this->identifier,
-					array_map(function ($item): string {
-						return strval($item);
-					}, (array) $parsedMessage->offsetGet('ssid_list'))
+					array_map(
+						static fn ($item): string => strval($item),
+						(array) $parsedMessage->offsetGet('ssid_list'),
+					),
 				);
 			} else {
 				$entityOrData = $payload;
@@ -852,7 +778,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 				$command,
 				$sequenceNr,
 				$hasReturnCode ? $returnCode : null,
-				$entityOrData
+				$entityOrData,
 			);
 		}
 
@@ -862,41 +788,39 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/**
 	 * Fill the data structure for the command with the given values
 	 *
-	 * @param Types\LocalDeviceCommand $command
 	 * @param Array<string, string|int|float|bool>|null $data
-	 *
-	 * @return string|null
 	 */
 	private function generateData(
 		Types\LocalDeviceCommand $command,
-		?array $data = null
-	): ?string {
+		array|null $data = null,
+	): string|null
+	{
 		$templates = [
-			Types\LocalDeviceCommand::CMD_CONTROL      => [
+			Types\LocalDeviceCommand::CMD_CONTROL => [
 				'devId' => '',
-				'uid'   => '',
-				't'     => '',
+				'uid' => '',
+				't' => '',
 			],
-			Types\LocalDeviceCommand::CMD_STATUS       => [
-				'gwId'  => '',
+			Types\LocalDeviceCommand::CMD_STATUS => [
+				'gwId' => '',
 				'devId' => '',
 			],
-			Types\LocalDeviceCommand::CMD_HEART_BEAT   => [],
-			Types\LocalDeviceCommand::CMD_DP_QUERY     => [
-				'gwId'  => '',
+			Types\LocalDeviceCommand::CMD_HEART_BEAT => [],
+			Types\LocalDeviceCommand::CMD_DP_QUERY => [
+				'gwId' => '',
 				'devId' => '',
-				'uid'   => '',
-				't'     => '',
+				'uid' => '',
+				't' => '',
 			],
-			Types\LocalDeviceCommand::CMD_CONTROL_NEW  => [
+			Types\LocalDeviceCommand::CMD_CONTROL_NEW => [
 				'devId' => '',
-				'uid'   => '',
-				't'     => '',
+				'uid' => '',
+				't' => '',
 			],
 			Types\LocalDeviceCommand::CMD_DP_QUERY_NEW => [
 				'devId' => '',
-				'uid'   => '',
-				't'     => '',
+				'uid' => '',
+				't' => '',
 			],
 		];
 
@@ -932,21 +856,20 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 		try {
 			return $result === [] ? '{}' : Nette\Utils\Json::encode($result);
-
 		} catch (Nette\Utils\JsonException $ex) {
 			$this->logger->error(
 				'Message payload could not be build',
 				[
-					'source'    => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
-					'type'      => 'localapi-api',
+					'source' => Metadata\Constants::CONNECTOR_TUYA_SOURCE,
+					'type' => 'localapi-api',
 					'exception' => [
 						'message' => $ex->getMessage(),
-						'code'    => $ex->getCode(),
+						'code' => $ex->getCode(),
 					],
-					'device'    => [
+					'device' => [
 						'identifier' => $this->identifier,
 					],
-				]
+				],
 			);
 
 			return null;
@@ -956,17 +879,16 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	/**
 	 * Join the payload request parts together
 	 *
-	 * @param int $sequenceNr
-	 * @param int[] $payload
-	 * @param Types\LocalDeviceCommand $command
+	 * @param Array<int> $payload
 	 *
-	 * @return int[]
+	 * @return Array<int>
 	 */
 	private function stitchPayload(
 		int $sequenceNr,
 		array $payload,
-		Types\LocalDeviceCommand $command
-	): array {
+		Types\LocalDeviceCommand $command,
+	): array
+	{
 		$commandHb = [
 			($command->getValue() >> 24) & 0xFF,
 			($command->getValue() >> 16) & 0xFF,
@@ -1006,19 +928,16 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		return array_merge(
 			array_slice($bufferHb, 0, count($bufferHb) - 8),
 			$crcHb,
-			array_slice($bufferHb, count($bufferHb) - 4)
+			array_slice($bufferHb, count($bufferHb) - 4),
 		);
 	}
 
-	/**
-	 * @param string $schemaFilename
-	 *
-	 * @return string
-	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {
-			$schema = Utils\FileSystem::read(TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename);
+			$schema = Utils\FileSystem::read(
+				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+			);
 
 		} catch (Nette\IOException) {
 			throw new Exceptions\LocalApiCall('Validation schema for response could not be loaded');

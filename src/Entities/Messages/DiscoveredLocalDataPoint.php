@@ -32,162 +32,78 @@ final class DiscoveredLocalDataPoint implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $device;
-
-	/** @var string */
-	private string $code;
-
-	/** @var string */
-	private string $name;
-
-	/** @var MetadataTypes\DataTypeType */
-	private MetadataTypes\DataTypeType $dataType;
-
-	/** @var string|null */
-	private ?string $unit;
-
-	/** @var string|null */
-	private ?string $format;
-
-	/** @var int|float|null */
-	private int|float|null $min;
-
-	/** @var int|float|null */
-	private int|float|null $max;
-
-	/** @var int|float|null */
-	private int|float|null $step;
-
-	/** @var bool */
-	private bool $queryable;
-
-	/** @var bool */
-	private bool $settable;
-
-	/** @var Types\MessageSource */
-	private Types\MessageSource $source;
-
 	public function __construct(
-		string $device,
-		string $code,
-		string $name,
-		MetadataTypes\DataTypeType $dataType,
-		?string $unit,
-		?string $format,
-		int|float|null $min,
-		int|float|null $max,
-		int|float|null $step,
-		bool $queryable,
-		bool $settable,
-		Types\MessageSource $source
-	) {
-		$this->device = $device;
-
-		$this->code = $code;
-		$this->name = $name;
-		$this->dataType = $dataType;
-		$this->unit = $unit;
-		$this->format = $format;
-		$this->min = $min;
-		$this->max = $max;
-		$this->step = $step;
-		$this->queryable = $queryable;
-		$this->settable = $settable;
-		$this->source = $source;
+		private readonly string $device,
+		private readonly string $code,
+		private readonly string $name,
+		private readonly MetadataTypes\DataType $dataType,
+		private readonly string|null $unit,
+		private readonly string|null $format,
+		private readonly int|float|null $min,
+		private readonly int|float|null $max,
+		private readonly int|float|null $step,
+		private readonly bool $queryable,
+		private readonly bool $settable,
+		private readonly Types\MessageSource $source,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getDevice(): string
 	{
 		return $this->device;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getCode(): string
 	{
 		return $this->code;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getName(): string
 	{
 		return $this->name;
 	}
 
-	/**
-	 * @return MetadataTypes\DataTypeType
-	 */
-	public function getDataType(): MetadataTypes\DataTypeType
+	public function getDataType(): MetadataTypes\DataType
 	{
 		return $this->dataType;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getUnit(): ?string
+	public function getUnit(): string|null
 	{
 		return $this->unit;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getFormat(): ?string
+	public function getFormat(): string|null
 	{
 		return $this->format;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getMin(): float|int|null
 	{
 		return $this->min;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getMax(): float|int|null
 	{
 		return $this->max;
 	}
 
-	/**
-	 * @return float|int|null
-	 */
 	public function getStep(): float|int|null
 	{
 		return $this->step;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isQueryable(): bool
 	{
 		return $this->queryable;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isSettable(): bool
 	{
 		return $this->settable;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getSource(): Types\MessageSource
 	{
 		return $this->source;
@@ -201,17 +117,17 @@ final class DiscoveredLocalDataPoint implements Entity
 		return [
 			'device' => $this->getDevice(),
 
-			'code'      => $this->getCode(),
-			'name'      => $this->getName(),
+			'code' => $this->getCode(),
+			'name' => $this->getName(),
 			'data_type' => $this->getDataType()->getValue(),
-			'unit'      => $this->getUnit(),
-			'format'    => $this->getFormat(),
-			'min'       => $this->getMin(),
-			'max'       => $this->getMax(),
-			'step'      => $this->getStep(),
+			'unit' => $this->getUnit(),
+			'format' => $this->getFormat(),
+			'min' => $this->getMin(),
+			'max' => $this->getMax(),
+			'step' => $this->getStep(),
 			'queryable' => $this->isQueryable(),
-			'settable'  => $this->isSettable(),
-			'source'    => $this->getSource()->getValue(),
+			'settable' => $this->isSettable(),
+			'source' => $this->getSource()->getValue(),
 		];
 	}
 

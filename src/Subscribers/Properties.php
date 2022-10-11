@@ -38,21 +38,12 @@ final class Properties implements Common\EventSubscriber
 
 	use Nette\SmartObject;
 
-	/** @var DevicesModuleModels\Devices\Properties\IPropertiesManager */
-	private DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager;
-
-	/**
-	 * @param DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager
-	 */
 	public function __construct(
-		DevicesModuleModels\Devices\Properties\IPropertiesManager $propertiesManager
-	) {
-		$this->propertiesManager = $propertiesManager;
+		private readonly DevicesModuleModels\Devices\Properties\PropertiesManager $propertiesManager,
+	)
+	{
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getSubscribedEvents(): array
 	{
 		return [
@@ -60,11 +51,6 @@ final class Properties implements Common\EventSubscriber
 		];
 	}
 
-	/**
-	 * @param ORM\Event\LifecycleEventArgs $eventArgs
-	 *
-	 * @return void
-	 */
 	public function postPersist(ORM\Event\LifecycleEventArgs $eventArgs): void
 	{
 		// onFlush was executed before, everything already initialized
@@ -82,20 +68,20 @@ final class Properties implements Common\EventSubscriber
 		}
 
 		$this->propertiesManager->create(Utils\ArrayHash::from([
-			'device'     => $entity,
-			'entity'     => DevicesModuleEntities\Devices\Properties\DynamicProperty::class,
+			'device' => $entity,
+			'entity' => DevicesModuleEntities\Devices\Properties\Dynamic::class,
 			'identifier' => Types\DevicePropertyIdentifier::IDENTIFIER_STATE,
-			'dataType'   => MetadataTypes\DataTypeType::get(MetadataTypes\DataTypeType::DATA_TYPE_ENUM),
-			'unit'       => null,
-			'format'     => [
-				MetadataTypes\ConnectionStateType::STATE_CONNECTED,
-				MetadataTypes\ConnectionStateType::STATE_DISCONNECTED,
-				MetadataTypes\ConnectionStateType::STATE_STOPPED,
-				MetadataTypes\ConnectionStateType::STATE_LOST,
-				MetadataTypes\ConnectionStateType::STATE_UNKNOWN,
+			'dataType' => MetadataTypes\DataType::get(MetadataTypes\DataType::DATA_TYPE_ENUM),
+			'unit' => null,
+			'format' => [
+				MetadataTypes\ConnectionState::STATE_CONNECTED,
+				MetadataTypes\ConnectionState::STATE_DISCONNECTED,
+				MetadataTypes\ConnectionState::STATE_STOPPED,
+				MetadataTypes\ConnectionState::STATE_LOST,
+				MetadataTypes\ConnectionState::STATE_UNKNOWN,
 			],
-			'settable'   => false,
-			'queryable'  => false,
+			'settable' => false,
+			'queryable' => false,
 		]));
 	}
 

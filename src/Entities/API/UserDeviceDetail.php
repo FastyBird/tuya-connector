@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\Entities\API;
 
 use Nette;
+use function array_map;
 
 /**
  * OpenAPI device detail entity
@@ -30,274 +31,127 @@ final class UserDeviceDetail implements Entity
 
 	use Nette\SmartObject;
 
-	/** @var string */
-	private string $id;
-
-	/** @var string|null */
-	private ?string $name;
-
-	/** @var string */
-	private string $uid;
-
-	/** @var string */
-	private string $localKey;
-
-	/** @var string|null */
-	private ?string $category;
-
-	/** @var string|null */
-	private ?string $productId;
-
-	/** @var string|null */
-	private ?string $productName;
-
-	/** @var bool */
-	private bool $sub;
-
-	/** @var string */
-	private string $uuid;
-
-	/** @var string|null */
-	private ?string $ownerId;
-
-	/** @var bool */
-	private bool $online;
-
-	/** @var UserDeviceDataPointStatus[] */
-	private array $status;
-
-	/** @var int|null */
-	private ?int $activeTime;
-
-	/** @var int|null */
-	private ?int $createTime;
-
-	/** @var int|null */
-	private ?int $updateTime;
-
-	/** @var int|null */
-	private ?int $bizType;
-
-	/** @var string|null */
-	private ?string $icon;
-
-	/** @var string|null */
-	private ?string $ip;
-
-	/** @var string|null */
-	private ?string $timeZone;
-
 	/**
-	 * @param string $id
-	 * @param string|null $name
-	 * @param string $uid
-	 * @param string $localKey
-	 * @param string|null $category
-	 * @param string|null $productId
-	 * @param string|null $productName
-	 * @param bool $sub
-	 * @param string $uuid
-	 * @param string|null $ownerId
-	 * @param bool $online
-	 * @param UserDeviceDataPointStatus[] $status
-	 * @param int|null $activeTime
-	 * @param int|null $createTime
-	 * @param int|null $updateTime
-	 * @param int|null $bizType
-	 * @param string|null $icon
-	 * @param string|null $ip
-	 * @param string|null $timeZone
+	 * @param Array<UserDeviceDataPointStatus> $status
 	 */
 	public function __construct(
-		string $id,
-		?string $name,
-		string $uid,
-		string $localKey,
-		?string $category,
-		?string $productId,
-		?string $productName,
-		bool $sub,
-		string $uuid,
-		?string $ownerId,
-		bool $online,
-		array $status,
-		?int $activeTime,
-		?int $createTime,
-		?int $updateTime,
-		?int $bizType,
-		?string $icon,
-		?string $ip,
-		?string $timeZone
-	) {
-		$this->id = $id;
-		$this->name = $name;
-		$this->uid = $uid;
-		$this->localKey = $localKey;
-		$this->category = $category;
-		$this->productId = $productId;
-		$this->productName = $productName;
-		$this->sub = $sub;
-		$this->uuid = $uuid;
-		$this->ownerId = $ownerId;
-		$this->online = $online;
-		$this->status = $status;
-		$this->activeTime = $activeTime;
-		$this->createTime = $createTime;
-		$this->updateTime = $updateTime;
-		$this->bizType = $bizType;
-		$this->icon = $icon;
-		$this->ip = $ip;
-		$this->timeZone = $timeZone;
+		private readonly string $id,
+		private readonly string|null $name,
+		private readonly string $uid,
+		private readonly string $localKey,
+		private readonly string|null $category,
+		private readonly string|null $productId,
+		private readonly string|null $productName,
+		private readonly bool $sub,
+		private readonly string $uuid,
+		private readonly string|null $ownerId,
+		private readonly bool $online,
+		private readonly array $status,
+		private readonly int|null $activeTime,
+		private readonly int|null $createTime,
+		private readonly int|null $updateTime,
+		private readonly int|null $bizType,
+		private readonly string|null $icon,
+		private readonly string|null $ip,
+		private readonly string|null $timeZone,
+	)
+	{
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getId(): string
 	{
 		return $this->id;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getName(): ?string
+	public function getName(): string|null
 	{
 		return $this->name;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getUid(): string
 	{
 		return $this->uid;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getLocalKey(): string
 	{
 		return $this->localKey;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getCategory(): ?string
+	public function getCategory(): string|null
 	{
 		return $this->category;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getProductId(): ?string
+	public function getProductId(): string|null
 	{
 		return $this->productId;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getProductName(): ?string
+	public function getProductName(): string|null
 	{
 		return $this->productName;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function getSub(): bool
 	{
 		return $this->sub;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getUuid(): string
 	{
 		return $this->uuid;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getOwnerId(): ?string
+	public function getOwnerId(): string|null
 	{
 		return $this->ownerId;
 	}
 
-	/**
-	 * @return bool
-	 */
 	public function isOnline(): bool
 	{
 		return $this->online;
 	}
 
 	/**
-	 * @return UserDeviceDataPointStatus[]
+	 * @return Array<UserDeviceDataPointStatus>
 	 */
 	public function getStatus(): array
 	{
 		return $this->status;
 	}
 
-	/**
-	 * @return int|null
-	 */
-	public function getActiveTime(): ?int
+	public function getActiveTime(): int|null
 	{
 		return $this->activeTime;
 	}
 
-	/**
-	 * @return int|null
-	 */
-	public function getCreateTime(): ?int
+	public function getCreateTime(): int|null
 	{
 		return $this->createTime;
 	}
 
-	/**
-	 * @return int|null
-	 */
-	public function getUpdateTime(): ?int
+	public function getUpdateTime(): int|null
 	{
 		return $this->updateTime;
 	}
 
-	/**
-	 * @return int|null
-	 */
-	public function getBizType(): ?int
+	public function getBizType(): int|null
 	{
 		return $this->bizType;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getIcon(): ?string
+	public function getIcon(): string|null
 	{
 		return $this->icon;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getIp(): ?string
+	public function getIp(): string|null
 	{
 		return $this->ip;
 	}
 
-	/**
-	 * @return string|null
-	 */
-	public function getTimeZone(): ?string
+	public function getTimeZone(): string|null
 	{
 		return $this->timeZone;
 	}
@@ -308,27 +162,28 @@ final class UserDeviceDetail implements Entity
 	public function toArray(): array
 	{
 		return [
-			'id'           => $this->getId(),
-			'name'         => $this->getName(),
-			'uid'          => $this->getUid(),
-			'local_key'    => $this->getLocalKey(),
-			'category'     => $this->getCategory(),
-			'product_id'   => $this->getProductId(),
+			'id' => $this->getId(),
+			'name' => $this->getName(),
+			'uid' => $this->getUid(),
+			'local_key' => $this->getLocalKey(),
+			'category' => $this->getCategory(),
+			'product_id' => $this->getProductId(),
 			'product_name' => $this->getProductName(),
-			'sub'          => $this->getSub(),
-			'uuid'         => $this->getUuid(),
-			'owner_id'     => $this->getOwnerId(),
-			'online'       => $this->isOnline(),
-			'status'       => array_map(function (UserDeviceDataPointStatus $item): array {
-				return $item->toArray();
-			}, $this->getStatus()),
-			'active_time'  => $this->getActiveTime(),
-			'create_time'  => $this->getCreateTime(),
-			'update_time'  => $this->getUpdateTime(),
-			'biz_type'     => $this->getBizType(),
-			'icon'         => $this->getIcon(),
-			'ip'           => $this->getIp(),
-			'time_zone'    => $this->getTimeZone(),
+			'sub' => $this->getSub(),
+			'uuid' => $this->getUuid(),
+			'owner_id' => $this->getOwnerId(),
+			'online' => $this->isOnline(),
+			'status' => array_map(
+				static fn (UserDeviceDataPointStatus $item): array => $item->toArray(),
+				$this->getStatus(),
+			),
+			'active_time' => $this->getActiveTime(),
+			'create_time' => $this->getCreateTime(),
+			'update_time' => $this->getUpdateTime(),
+			'biz_type' => $this->getBizType(),
+			'icon' => $this->getIcon(),
+			'ip' => $this->getIp(),
+			'time_zone' => $this->getTimeZone(),
 		];
 	}
 

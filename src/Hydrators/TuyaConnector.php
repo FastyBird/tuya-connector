@@ -21,19 +21,15 @@ use FastyBird\TuyaConnector\Entities;
 /**
  * Tuya connector entity hydrator
  *
+ * @phpstan-extends DevicesModuleHydrators\Connectors\Connector<Entities\TuyaConnector>
+ *
  * @package        FastyBird:TuyaConnector!
  * @subpackage     Hydrators
- *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
- *
- * @phpstan-extends DevicesModuleHydrators\Connectors\ConnectorHydrator<Entities\TuyaConnector>
  */
-final class TuyaConnector extends DevicesModuleHydrators\Connectors\ConnectorHydrator
+final class TuyaConnector extends DevicesModuleHydrators\Connectors\Connector
 {
 
-	/**
-	 * {@inheritDoc}
-	 */
 	public function getEntityName(): string
 	{
 		return Entities\TuyaConnector::class;
