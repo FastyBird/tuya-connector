@@ -118,7 +118,6 @@ trait TConsumeDeviceAttribute
 					]),
 				),
 			);
-			assert($attributeEntity instanceof DevicesModuleEntities\Devices\Attributes\Attribute);
 
 			$this->logger->debug(
 				'Device attribute was created',
@@ -154,7 +153,6 @@ trait TConsumeDeviceAttribute
 						]),
 					),
 				);
-				assert($attributeEntity instanceof DevicesModuleEntities\Devices\Attributes\Attribute);
 
 				$this->logger->debug(
 					'Device attribute was updated',

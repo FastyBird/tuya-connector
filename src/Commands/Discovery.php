@@ -127,13 +127,13 @@ class Discovery extends Console\Command\Command
 
 		$io->note('This action will run connector devices discovery.');
 
-		if (!$input->getOption('no-confirm')) {
+		if ($input->getOption('no-confirm') === false) {
 			$question = new Console\Question\ConfirmationQuestion(
 				'Would you like to continue?',
 				false,
 			);
 
-			$continue = $io->askQuestion($question);
+			$continue = (bool) $io->askQuestion($question);
 
 			if (!$continue) {
 				return Console\Command\Command::SUCCESS;
@@ -164,9 +164,8 @@ class Discovery extends Console\Command\Command
 					continue;
 				}
 
-				$connectors[$connector->getIdentifier()] = $connector->getIdentifier() . $connector->getName()
-					? ' [' . $connector->getName() . ']'
-					: '';
+				$connectors[$connector->getIdentifier()] = $connector->getIdentifier()
+					. ($connector->getName() !== null ? ' [' . $connector->getName() . ']' : '');
 			}
 
 			if (count($connectors) === 0) {
@@ -186,7 +185,7 @@ class Discovery extends Console\Command\Command
 					return Console\Command\Command::FAILURE;
 				}
 
-				if (!$input->getOption('no-confirm')) {
+				if ($input->getOption('no-confirm') === false) {
 					$question = new Console\Question\ConfirmationQuestion(
 						sprintf(
 							'Would you like to discover devices with "%s" connector',
@@ -195,7 +194,7 @@ class Discovery extends Console\Command\Command
 						false,
 					);
 
-					if (!$io->askQuestion($question)) {
+					if ($io->askQuestion($question) === false) {
 						return Console\Command\Command::SUCCESS;
 					}
 				}

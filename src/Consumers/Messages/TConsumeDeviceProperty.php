@@ -164,7 +164,6 @@ trait TConsumeDeviceProperty
 					]),
 				),
 			);
-			assert($propertyEntity instanceof DevicesModuleEntities\Devices\Properties\Property);
 
 			$this->logger->debug(
 				'Device ip address property was created',
@@ -200,7 +199,6 @@ trait TConsumeDeviceProperty
 						]),
 					),
 				);
-				assert($propertyEntity instanceof DevicesModuleEntities\Devices\Properties\Property);
 
 				$this->logger->debug(
 					'Device ip address property was updated',

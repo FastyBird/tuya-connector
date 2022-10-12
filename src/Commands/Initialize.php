@@ -110,13 +110,13 @@ class Initialize extends Console\Command\Command
 
 		$io->note('This action will create|update connector configuration.');
 
-		if (!$input->getOption('no-confirm')) {
+		if ($input->getOption('no-confirm') === false) {
 			$question = new Console\Question\ConfirmationQuestion(
 				'Would you like to continue?',
 				false,
 			);
 
-			$continue = $io->askQuestion($question);
+			$continue = (bool) $io->askQuestion($question);
 
 			if (!$continue) {
 				return Console\Command\Command::SUCCESS;
@@ -301,7 +301,7 @@ class Initialize extends Console\Command\Command
 			}
 
 			$connectors[$connector->getIdentifier()] = $connector->getIdentifier()
-				. ($connector->getName() ? ' [' . $connector->getName() . ']' : '');
+				. ($connector->getName() !== null ? ' [' . $connector->getName() . ']' : '');
 		}
 
 		if (count($connectors) === 0) {
@@ -312,7 +312,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			$continue = $io->askQuestion($question);
+			$continue = (bool) $io->askQuestion($question);
 
 			if ($continue) {
 				$this->createNewConfiguration($io);
@@ -378,7 +378,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			$changeMode = $io->askQuestion($question);
+			$changeMode = (bool) $io->askQuestion($question);
 		}
 
 		$mode = null;
@@ -399,7 +399,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			if ($io->askQuestion($question)) {
+			if ($io->askQuestion($question) === true) {
 				$enabled = false;
 			}
 		} else {
@@ -408,7 +408,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			if ($io->askQuestion($question)) {
+			if ($io->askQuestion($question) === true) {
 				$enabled = true;
 			}
 		}
@@ -430,7 +430,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			$changeAccessId = $io->askQuestion($question);
+			$changeAccessId = (bool) $io->askQuestion($question);
 		}
 
 		if ($changeAccessId) {
@@ -452,7 +452,7 @@ class Initialize extends Console\Command\Command
 				false,
 			);
 
-			$changeAccessSecret = $io->askQuestion($question);
+			$changeAccessSecret = (bool) $io->askQuestion($question);
 		}
 
 		if ($changeAccessSecret) {
@@ -486,7 +486,7 @@ class Initialize extends Console\Command\Command
 					false,
 				);
 
-				$changeUid = $io->askQuestion($question);
+				$changeUid = (bool) $io->askQuestion($question);
 			}
 
 			if ($changeUid) {
@@ -634,7 +634,7 @@ class Initialize extends Console\Command\Command
 			}
 
 			$connectors[$connector->getIdentifier()] = $connector->getIdentifier()
-				. ($connector->getName() ? ' [' . $connector->getName() . ']' : '');
+				. ($connector->getName() !== null ? ' [' . $connector->getName() . ']' : '');
 		}
 
 		if (count($connectors) === 0) {
@@ -690,7 +690,7 @@ class Initialize extends Console\Command\Command
 			false,
 		);
 
-		$continue = $io->askQuestion($question);
+		$continue = (bool) $io->askQuestion($question);
 
 		if (!$continue) {
 			return;

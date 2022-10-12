@@ -598,7 +598,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 			$size = (int) (($buffer[13] << 24) + ($buffer[14] << 16) + ($buffer[15] << 8) + $buffer[16]);
 			$returnCode = (int) (($buffer[17] << 24) + ($buffer[18] << 16) + ($buffer[19] << 8) + $buffer[20]);
-			$crc = (int) ($buffer[$bufferSize - 7] << 24 + $buffer[$bufferSize - 6] << 16 + $buffer[$bufferSize - 5] << 8 + $buffer[$bufferSize - 4]);
+			$crc = $buffer[$bufferSize - 7] << 24 + $buffer[$bufferSize - 6] << 16 + $buffer[$bufferSize - 5] << 8 + $buffer[$bufferSize - 4];
 
 			$hasReturnCode = ($returnCode & 0xFFFFFF00) === 0;
 

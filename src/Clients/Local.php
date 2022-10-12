@@ -325,7 +325,7 @@ final class Local implements Client
 				if (
 					$propertyItem->isSettable()
 					&& $propertyItem->getExpectedValue() !== null
-					&& $propertyItem->isPending()
+					&& $propertyItem->isPending() === true
 				) {
 					$pending = is_string($propertyItem->getPending())
 						? Utils\DateTime::createFromFormat(

@@ -116,7 +116,6 @@ final class LocalDiscovery implements Consumer
 					return $deviceEntity;
 				},
 			);
-			assert($deviceEntity instanceof Entities\TuyaDevice);
 
 			$this->logger->info(
 				'Creating new device',

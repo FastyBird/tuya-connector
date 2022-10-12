@@ -21,7 +21,6 @@ use Nette;
 use Psr\Log;
 use SplObjectStorage;
 use SplQueue;
-use function assert;
 use function count;
 use function sprintf;
 
@@ -111,7 +110,6 @@ final class Messages
 		$entity = $this->queue->dequeue();
 
 		foreach ($this->consumers as $consumer) {
-			assert($consumer instanceof Consumer);
 			if ($consumer->consume($entity) === true) {
 				return;
 			}

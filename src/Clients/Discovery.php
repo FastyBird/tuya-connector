@@ -579,8 +579,6 @@ final class Discovery implements Evenement\EventEmitterInterface
 					}
 
 					$dataPointCode = null;
-					$dataPointType = null;
-					$dataPointSpecification = '{}';
 					$dataPointDataType = Metadata\Types\DataType::get(Metadata\Types\DataType::DATA_TYPE_UNKNOWN);
 
 					if ($dataPointFunction !== null) {
@@ -588,14 +586,10 @@ final class Discovery implements Evenement\EventEmitterInterface
 						$dataPointType = Utils\Strings::lower($dataPointFunction->getType());
 						$dataPointSpecification = $dataPointFunction->getValues();
 
-					} elseif ($dataPointStatus !== null) {
+					} else {
 						$dataPointCode = $dataPointStatus->getCode();
 						$dataPointType = Utils\Strings::lower($dataPointStatus->getType());
 						$dataPointSpecification = $dataPointStatus->getValues();
-					}
-
-					if ($dataPointCode === null) {
-						continue;
 					}
 
 					if ($dataPointType === 'boolean') {

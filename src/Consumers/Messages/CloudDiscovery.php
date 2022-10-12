@@ -117,7 +117,6 @@ final class CloudDiscovery implements Consumer
 					return $deviceEntity;
 				},
 			);
-			assert($deviceEntity instanceof Entities\TuyaDevice);
 
 			$this->logger->info(
 				'Creating new device',
@@ -159,7 +158,6 @@ final class CloudDiscovery implements Consumer
 						return $deviceEntity;
 					},
 				);
-				assert($deviceEntity instanceof Entities\TuyaDevice);
 
 				$this->logger->debug(
 					'Device was updated',
