@@ -81,6 +81,9 @@ class Initialize extends Console\Command\Command
 		parent::__construct($name);
 	}
 
+	/**
+	 * @throws Console\Exception\InvalidArgumentException
+	 */
 	protected function configure(): void
 	{
 		$this
@@ -99,7 +102,10 @@ class Initialize extends Console\Command\Command
 	}
 
 	/**
+	 * @throws Console\Exception\InvalidArgumentException
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	protected function execute(Input\InputInterface $input, Output\OutputInterface $output): int
@@ -151,6 +157,8 @@ class Initialize extends Console\Command\Command
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function createNewConfiguration(Style\SymfonyStyle $io): void
@@ -287,6 +295,8 @@ class Initialize extends Console\Command\Command
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function editExistingConfiguration(Style\SymfonyStyle $io): void
@@ -621,6 +631,7 @@ class Initialize extends Console\Command\Command
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\Runtime
 	 */
 	private function deleteExistingConfiguration(Style\SymfonyStyle $io): void
 	{
@@ -732,6 +743,9 @@ class Initialize extends Console\Command\Command
 		}
 	}
 
+	/**
+	 * @throws Exceptions\InvalidState
+	 */
 	private function askMode(Style\SymfonyStyle $io): Types\ClientMode
 	{
 		$question = new Console\Question\ChoiceQuestion(
@@ -779,6 +793,9 @@ class Initialize extends Console\Command\Command
 		return strval($io->askQuestion($question));
 	}
 
+	/**
+	 * @throws Exceptions\Runtime
+	 */
 	private function getOrmConnection(): DBAL\Connection
 	{
 		$connection = $this->managerRegistry->getConnection();

@@ -1,32 +1,27 @@
 <?php declare(strict_types = 1);
 
-namespace Tests\Cases\Unit;
+namespace Tests\Cases\Unit\DI;
 
 use FastyBird\TuyaConnector\Hydrators;
 use FastyBird\TuyaConnector\Schemas;
-use Tester\Assert;
+use Nette;
+use Tests\Cases\Unit\BaseTestCase;
 
-require_once __DIR__ . '/../../../bootstrap.php';
-require_once __DIR__ . '/../BaseTestCase.php';
-
-/**
- * @testCase
- */
 final class ServicesTest extends BaseTestCase
 {
 
+	/**
+	 * @throws Nette\DI\MissingServiceException
+	 */
 	public function testServicesRegistration(): void
 	{
 		$container = $this->createContainer();
 
-		Assert::notNull($container->getByType(Hydrators\TuyaConnector::class));
-		Assert::notNull($container->getByType(Hydrators\TuyaDevice::class));
+		self::assertNotNull($container->getByType(Hydrators\TuyaConnector::class, false));
+		self::assertNotNull($container->getByType(Hydrators\TuyaDevice::class, false));
 
-		Assert::notNull($container->getByType(Schemas\TuyaConnector::class));
-		Assert::notNull($container->getByType(Schemas\TuyaDevice::class));
+		self::assertNotNull($container->getByType(Schemas\TuyaConnector::class, false));
+		self::assertNotNull($container->getByType(Schemas\TuyaDevice::class, false));
 	}
 
 }
-
-$test_case = new ServicesTest();
-$test_case->run();

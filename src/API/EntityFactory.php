@@ -62,6 +62,9 @@ final class EntityFactory
 	 * @template T of Entities\API\Entity
 	 *
 	 * @phpstan-return T
+	 *
+	 * @throws Exceptions\InvalidArgument
+	 * @throws Exceptions\InvalidState
 	 */
 	public function build(
 		string $entityClass,
@@ -168,6 +171,8 @@ final class EntityFactory
 	 * This method was inspired by same method in Nette framework
 	 *
 	 * @return Array<int, mixed>
+	 *
+	 * @throws ReflectionException
 	 */
 	private function autowireArguments(
 		ReflectionMethod $method,

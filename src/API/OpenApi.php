@@ -28,7 +28,9 @@ use Nette\Utils;
 use Psr\Http\Message;
 use Psr\Log;
 use React\Promise;
+use RuntimeException;
 use Throwable;
+use function assert;
 use function boolval;
 use function count;
 use function hash;
@@ -366,6 +368,8 @@ final class OpenApi
 						)
 					) {
 						foreach ($result->offsetGet('status') as $item) {
+							assert($item instanceof Utils\ArrayHash);
+
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\UserDeviceDataPointStatus::class,
 								$item,
@@ -432,6 +436,8 @@ final class OpenApi
 						)
 					) {
 						foreach ($result->offsetGet('functions') as $item) {
+							assert($item instanceof Utils\ArrayHash);
+
 							$deviceFunctions[] = $this->entityFactory->build(
 								Entities\API\UserDeviceSpecificationsFunction::class,
 								$item,
@@ -451,6 +457,8 @@ final class OpenApi
 						)
 					) {
 						foreach ($result->offsetGet('status') as $item) {
+							assert($item instanceof Utils\ArrayHash);
+
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\UserDeviceSpecificationsStatus::class,
 								$item,
@@ -749,6 +757,8 @@ final class OpenApi
 						)
 					) {
 						foreach ($result->offsetGet('functions') as $item) {
+							assert($item instanceof Utils\ArrayHash);
+
 							$deviceFunctions[] = $this->entityFactory->build(
 								Entities\API\DeviceSpecificationFunction::class,
 								$item,
@@ -768,6 +778,8 @@ final class OpenApi
 						)
 					) {
 						foreach ($result->offsetGet('status') as $item) {
+							assert($item instanceof Utils\ArrayHash);
+
 							$deviceStatus[] = $this->entityFactory->build(
 								Entities\API\DeviceSpecificationStatus::class,
 								$item,
@@ -1108,6 +1120,11 @@ final class OpenApi
 		return $response;
 	}
 
+	/**
+	 * @throws Exceptions\InvalidArgument
+	 * @throws Exceptions\OpenApiCall
+	 * @throws RuntimeException
+	 */
 	private function refreshAccessToken(string $path): void
 	{
 		if (Utils\Strings::startsWith($path, self::ACCESS_TOKEN_API_ENDPOINT)) {
@@ -1256,6 +1273,9 @@ final class OpenApi
 		return $this->client;
 	}
 
+	/**
+	 * @throws Exceptions\OpenApiCall
+	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {

@@ -18,6 +18,7 @@ namespace FastyBird\TuyaConnector\Connector;
 use FastyBird\DevicesModule\Connectors as DevicesModuleConnectors;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\TuyaConnector\Clients;
 use FastyBird\TuyaConnector\Consumers;
 use FastyBird\TuyaConnector\Helpers;
@@ -62,6 +63,7 @@ final class Connector implements DevicesModuleConnectors\Connector
 
 	/**
 	 * @throws DevicesModuleExceptions\Terminate
+	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function execute(): void
 	{

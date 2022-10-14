@@ -23,6 +23,7 @@ use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Types as MetadataTypes;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
@@ -49,6 +50,8 @@ trait TConsumeDeviceProperty
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function setDeviceProperty(

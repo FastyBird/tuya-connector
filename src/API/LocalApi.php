@@ -366,6 +366,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		return $this->lost;
 	}
 
+	/**
+	 * @throws Exceptions\InvalidState
+	 */
 	public function readStates(): Promise\PromiseInterface
 	{
 		$deferred = new Promise\Deferred();
@@ -389,6 +392,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 	/**
 	 * @param Array<string, int|float|string|bool> $states
+	 *
+	 * @throws Exceptions\InvalidState
 	 */
 	public function writeStates(array $states): Promise\PromiseInterface
 	{
@@ -414,6 +419,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		return $deferred->promise();
 	}
 
+	/**
+	 * @throws Exceptions\InvalidState
+	 */
 	public function writeState(string $idx, int|float|string|bool $value): Promise\PromiseInterface
 	{
 		return $this->writeStates([$idx => $value]);
@@ -430,6 +438,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 	/**
 	 * @param Array<string, int|float|string|bool>|null $data
+	 *
+	 * @throws Exceptions\InvalidState
 	 */
 	private function sendRequest(
 		Types\LocalDeviceCommand $command,
@@ -473,6 +483,8 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	 * @param Array<string, string|int|float|bool>|null $data
 	 *
 	 * @return Array<int>
+	 *
+	 * @throws Exceptions\InvalidState
 	 */
 	private function buildPayload(
 		int $sequenceNr,
@@ -565,6 +577,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		);
 	}
 
+	/**
+	 * @throws Exceptions\LocalApiCall
+	 */
 	private function decodePayload(string $data): Entities\API\DeviceRawMessage|null
 	{
 		$buffer = unpack('C*', $data);
@@ -932,6 +947,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 		);
 	}
 
+	/**
+	 * @throws Exceptions\LocalApiCall
+	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {

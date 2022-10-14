@@ -620,8 +620,9 @@ final class Discovery implements Evenement\EventEmitterInterface
 						) : null,
 						$dataPointSpecification->offsetExists('range') && is_array(
 							$dataPointSpecification->offsetGet('range'),
-						) ? $dataPointSpecification->offsetGet(
-							'range',
+						) ? array_map(
+							static fn ($item): string => strval($item),
+							$dataPointSpecification->offsetGet('range'),
 						) : [],
 						$dataPointSpecification->offsetExists('min') ? floatval(
 							$dataPointSpecification->offsetGet('min'),

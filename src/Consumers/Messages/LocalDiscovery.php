@@ -22,6 +22,7 @@ use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
 use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
 use Nette;
@@ -71,6 +72,8 @@ final class LocalDiscovery implements Consumer
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	public function consume(Entities\Messages\Entity $entity): bool

@@ -21,6 +21,7 @@ use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
 use FastyBird\TuyaConnector\Entities;
+use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
@@ -47,6 +48,8 @@ trait TConsumeDeviceAttribute
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws Exceptions\InvalidState
+	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
 	 */
 	private function setDeviceAttribute(

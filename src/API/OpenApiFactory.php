@@ -17,6 +17,7 @@ namespace FastyBird\TuyaConnector\API;
 
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
@@ -48,6 +49,10 @@ final class OpenApiFactory
 		$this->logger = $logger ?? new Log\NullLogger();
 	}
 
+	/**
+	 * @throws Exceptions\InvalidState
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	public function create(MetadataEntities\DevicesModule\Connector $connector): OpenApi
 	{
 		$endpoint = $this->connectorHelper->getConfiguration(

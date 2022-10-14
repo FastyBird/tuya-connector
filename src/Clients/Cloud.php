@@ -31,6 +31,7 @@ use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Helpers;
 use FastyBird\TuyaConnector\Types;
+use InvalidArgumentException;
 use Nette;
 use Nette\Utils;
 use Psr\Log;
@@ -109,6 +110,10 @@ final class Cloud implements Client
 
 	private Log\LoggerInterface $logger;
 
+	/**
+	 * @throws Exceptions\InvalidState
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	public function __construct(
 		private readonly MetadataEntities\DevicesModule\Connector $connector,
 		private readonly Helpers\Connector $connectorHelper,
@@ -130,6 +135,10 @@ final class Cloud implements Client
 		$this->openApiApi = $openApiApiFactory->create($this->connector);
 	}
 
+	/**
+	 * @throws InvalidArgumentException
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	public function connect(): void
 	{
 		$this->processedDevices = [];
@@ -619,6 +628,9 @@ final class Cloud implements Client
 		return false;
 	}
 
+	/**
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	private function handleWsMessage(string $message): void
 	{
 		try {
@@ -902,6 +914,9 @@ final class Cloud implements Client
 		}
 	}
 
+	/**
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	private function buildWsTopicUrl(): string
 	{
 		return $this->connectorHelper->getConfiguration(
@@ -919,6 +934,9 @@ final class Cloud implements Client
 		) . '-sub?ackTimeoutMillis=3000&subscriptionType=Failover';
 	}
 
+	/**
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	private function generatePassword(): string
 	{
 		$passString = $this->connectorHelper->getConfiguration(
@@ -944,6 +962,9 @@ final class Cloud implements Client
 		);
 	}
 
+	/**
+	 * @throws Exceptions\OpenPulsarHandle
+	 */
 	private function getSchemaFilePath(string $schemaFilename): string
 	{
 		try {

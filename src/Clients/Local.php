@@ -413,6 +413,9 @@ final class Local implements Client
 		return false;
 	}
 
+	/**
+	 * @throws MetadataExceptions\FileNotFound
+	 */
 	private function createDeviceClient(MetadataEntities\DevicesModule\Device $deviceItem): API\LocalApi
 	{
 		unset($this->processedDevicesCommands[$deviceItem->getId()->toString()]);
