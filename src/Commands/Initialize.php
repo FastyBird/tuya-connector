@@ -18,6 +18,7 @@ namespace FastyBird\TuyaConnector\Commands;
 use Doctrine\DBAL;
 use Doctrine\Persistence;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
@@ -25,6 +26,7 @@ use FastyBird\Metadata\Types as MetadataTypes;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Exceptions;
 use FastyBird\TuyaConnector\Types;
+use IPub\DoctrineOrmQuery\Exceptions as DoctrineOrmQueryExceptions;
 use Nette\Utils;
 use Psr\Log;
 use RuntimeException;
@@ -104,6 +106,9 @@ class Initialize extends Console\Command\Command
 	/**
 	 * @throws Console\Exception\InvalidArgumentException
 	 * @throws DBAL\Exception
+	 * @throws DoctrineOrmQueryExceptions\InvalidStateException
+	 * @throws DoctrineOrmQueryExceptions\QueryException
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
@@ -295,6 +300,9 @@ class Initialize extends Console\Command\Command
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws DoctrineOrmQueryExceptions\InvalidStateException
+	 * @throws DoctrineOrmQueryExceptions\QueryException
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws Exceptions\Runtime
 	 * @throws Metadata\Exceptions\FileNotFound
@@ -631,6 +639,8 @@ class Initialize extends Console\Command\Command
 
 	/**
 	 * @throws DBAL\Exception
+	 * @throws DoctrineOrmQueryExceptions\InvalidStateException
+	 * @throws DoctrineOrmQueryExceptions\QueryException
 	 * @throws Exceptions\Runtime
 	 */
 	private function deleteExistingConfiguration(Style\SymfonyStyle $io): void

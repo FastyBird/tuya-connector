@@ -111,6 +111,7 @@ final class Cloud implements Client
 	private Log\LoggerInterface $logger;
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
@@ -136,6 +137,7 @@ final class Cloud implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws InvalidArgumentException
 	 * @throws MetadataExceptions\FileNotFound
 	 */
@@ -629,6 +631,7 @@ final class Cloud implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	private function handleWsMessage(string $message): void
@@ -915,6 +918,7 @@ final class Cloud implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	private function buildWsTopicUrl(): string
@@ -935,6 +939,7 @@ final class Cloud implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	private function generatePassword(): string

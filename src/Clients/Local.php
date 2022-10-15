@@ -98,6 +98,7 @@ final class Local implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function connect(): void
@@ -414,6 +415,7 @@ final class Local implements Client
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	private function createDeviceClient(MetadataEntities\DevicesModule\Device $deviceItem): API\LocalApi

@@ -16,6 +16,7 @@
 namespace FastyBird\TuyaConnector\API;
 
 use FastyBird\DateTimeFactory;
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
@@ -50,6 +51,7 @@ final class OpenApiFactory
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */

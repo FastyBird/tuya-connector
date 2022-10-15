@@ -15,6 +15,7 @@
 
 namespace FastyBird\TuyaConnector\Helpers;
 
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
@@ -45,6 +46,7 @@ final class Device
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function getConfiguration(
@@ -75,10 +77,6 @@ final class Device
 
 		if ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_PROTOCOL_VERSION) {
 			return Types\DeviceProtocolVersion::VERSION_V33;
-		}
-
-		if ($type->getValue() === Types\DevicePropertyIdentifier::IDENTIFIER_LOCAL_KEY) {
-			return '712aadb9520c1dc2';
 		}
 
 		return null;

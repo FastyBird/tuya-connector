@@ -15,6 +15,7 @@
 
 namespace FastyBird\TuyaConnector\Helpers;
 
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
@@ -43,6 +44,7 @@ final class Connector
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function getConfiguration(

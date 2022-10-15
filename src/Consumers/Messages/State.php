@@ -15,6 +15,7 @@
 
 namespace FastyBird\TuyaConnector\Consumers\Messages;
 
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
@@ -22,6 +23,7 @@ use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\TuyaConnector\Consumers\Consumer;
 use FastyBird\TuyaConnector\Entities;
 use FastyBird\TuyaConnector\Helpers;
+use IPub\DoctrineOrmQuery\Exceptions as DoctrineOrmQueryExceptions;
 use Nette;
 use Psr\Log;
 
@@ -54,6 +56,9 @@ final class State implements Consumer
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
+	 * @throws DoctrineOrmQueryExceptions\InvalidStateException
+	 * @throws DoctrineOrmQueryExceptions\QueryException
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function consume(Entities\Messages\Entity $entity): bool

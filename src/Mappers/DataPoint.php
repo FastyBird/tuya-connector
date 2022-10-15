@@ -15,6 +15,7 @@
 
 namespace FastyBird\TuyaConnector\Mappers;
 
+use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
@@ -47,6 +48,7 @@ final class DataPoint
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	public function findProperty(
@@ -75,6 +77,7 @@ final class DataPoint
 	}
 
 	/**
+	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
 	 */
 	private function loadProperty(
