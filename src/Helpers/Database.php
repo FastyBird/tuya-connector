@@ -13,12 +13,12 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Helpers;
+namespace FastyBird\Connector\Tuya\Helpers;
 
 use Doctrine\DBAL;
 use Doctrine\ORM;
 use Doctrine\Persistence;
-use FastyBird\TuyaConnector\Exceptions;
+use FastyBird\Connector\Tuya\Exceptions;
 use Nette;
 use Throwable;
 use function gc_collect_cycles;

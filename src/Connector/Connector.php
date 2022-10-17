@@ -13,16 +13,16 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Connector;
+namespace FastyBird\Connector\Tuya\Connector;
 
+use FastyBird\Connector\Tuya\Clients;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DevicesModule\Connectors as DevicesModuleConnectors;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
-use FastyBird\TuyaConnector\Clients;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use React\EventLoop;
 use ReflectionClass;
@@ -65,6 +65,11 @@ final class Connector implements DevicesModuleConnectors\Connector
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws DevicesModuleExceptions\Terminate
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function execute(): void
 	{

@@ -13,9 +13,9 @@
  * @date           04.09.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\Messages;
+namespace FastyBird\Connector\Tuya\Entities\Messages;
 
-use FastyBird\TuyaConnector\Types;
+use FastyBird\Connector\Tuya\Types;
 use Nette;
 use Ramsey\Uuid;
 

@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * TuyaConnector.php
+ * Tuya.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -13,10 +13,10 @@
  * @date           25.04.22
  */
 
-namespace FastyBird\TuyaConnector\Hydrators;
+namespace FastyBird\Connector\Tuya\Hydrators;
 
+use FastyBird\Connector\Tuya\Entities;
 use FastyBird\DevicesModule\Hydrators as DevicesModuleHydrators;
-use FastyBird\TuyaConnector\Entities;
 
 /**
  * Tuya connector entity hydrator

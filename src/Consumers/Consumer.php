@@ -13,9 +13,9 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers;
+namespace FastyBird\Connector\Tuya\Consumers;
 
-use FastyBird\TuyaConnector\Entities;
+use FastyBird\Connector\Tuya\Entities;
 
 /**
  * Clients messages consumer interface

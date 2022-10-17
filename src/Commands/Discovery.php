@@ -13,20 +13,20 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Commands;
+namespace FastyBird\Connector\Tuya\Commands;
 
 use DateTimeInterface;
+use FastyBird\Connector\Tuya\Clients;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
-use FastyBird\TuyaConnector\Clients;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use Ramsey\Uuid;
 use React\EventLoop;
@@ -123,6 +123,11 @@ class Discovery extends Console\Command\Command
 	 * @throws Console\Exception\InvalidArgumentException
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	protected function execute(Input\InputInterface $input, Output\OutputInterface $output): int
 	{

@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * TuyaConnectorExtension.php
+ * TuyaExtension.php
  *
  * @license        More in license.md
  * @copyright      https://www.fastybird.com
@@ -13,21 +13,21 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\DI;
+namespace FastyBird\Connector\Tuya\DI;
 
 use Doctrine\Persistence;
+use FastyBird\Connector\Tuya\API;
+use FastyBird\Connector\Tuya\Clients;
+use FastyBird\Connector\Tuya\Commands;
+use FastyBird\Connector\Tuya\Connector;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Hydrators;
+use FastyBird\Connector\Tuya\Mappers;
+use FastyBird\Connector\Tuya\Schemas;
+use FastyBird\Connector\Tuya\Subscribers;
 use FastyBird\DevicesModule\DI as DevicesModuleDI;
-use FastyBird\TuyaConnector\API;
-use FastyBird\TuyaConnector\Clients;
-use FastyBird\TuyaConnector\Commands;
-use FastyBird\TuyaConnector\Connector;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Hydrators;
-use FastyBird\TuyaConnector\Mappers;
-use FastyBird\TuyaConnector\Schemas;
-use FastyBird\TuyaConnector\Subscribers;
 use Nette;
 use Nette\DI;
 use const DIRECTORY_SEPARATOR;
@@ -40,7 +40,7 @@ use const DIRECTORY_SEPARATOR;
  *
  * @author         Adam Kadlec <adam.kadlec@fastybird.com>
  */
-class TuyaConnectorExtension extends DI\CompilerExtension
+class TuyaExtension extends DI\CompilerExtension
 {
 
 	public const NAME = 'fbTuyaConnector';
@@ -54,7 +54,7 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 			Nette\Configurator $config,
 			DI\Compiler $compiler,
 		) use ($extensionName): void {
-			$compiler->addExtension($extensionName, new TuyaConnectorExtension());
+			$compiler->addExtension($extensionName, new TuyaExtension());
 		};
 	}
 
@@ -195,7 +195,7 @@ class TuyaConnectorExtension extends DI\CompilerExtension
 		if ($ormAnnotationDriverChainService instanceof DI\Definitions\ServiceDefinition) {
 			$ormAnnotationDriverChainService->addSetup('addDriver', [
 				$ormAnnotationDriverService,
-				'FastyBird\TuyaConnector\Entities',
+				'FastyBird\Connector\Tuya\Entities',
 			]);
 		}
 	}

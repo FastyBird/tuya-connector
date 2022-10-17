@@ -13,7 +13,7 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
 use FastyBird\Metadata\Entities as MetadataEntities;
 

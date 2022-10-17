@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * TuyaConnector.php
+ * Tuya.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -13,7 +13,7 @@
  * @date           25.04.22
  */
 
-namespace FastyBird\TuyaConnector\Entities;
+namespace FastyBird\Connector\Tuya\Entities;
 
 use Doctrine\ORM\Mapping as ORM;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;

@@ -13,15 +13,16 @@
  * @date           25.08.22
  */
 
-namespace FastyBird\TuyaConnector\API;
+namespace FastyBird\Connector\Tuya\API;
 
+use FastyBird\Connector\Tuya;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
-use FastyBird\TuyaConnector;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Types;
 use GuzzleHttp;
 use Nette;
 use Nette\Utils;
@@ -1124,6 +1125,7 @@ final class OpenApi
 	 * @throws Exceptions\InvalidArgument
 	 * @throws Exceptions\OpenApiCall
 	 * @throws RuntimeException
+	 * @throws MetadataExceptions\Logic
 	 */
 	private function refreshAccessToken(string $path): void
 	{
@@ -1280,7 +1282,7 @@ final class OpenApi
 	{
 		try {
 			$schema = Utils\FileSystem::read(
-				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+				Tuya\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
 			);
 
 		} catch (Nette\IOException) {

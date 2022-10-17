@@ -13,7 +13,7 @@
  * @date           28.08.22
  */
 
-namespace FastyBird\TuyaConnector;
+namespace FastyBird\Connector\Tuya;
 
 /**
  * Connector constants

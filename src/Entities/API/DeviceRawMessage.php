@@ -13,9 +13,9 @@
  * @date           26.04.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\API;
+namespace FastyBird\Connector\Tuya\Entities\API;
 
-use FastyBird\TuyaConnector\Types;
+use FastyBird\Connector\Tuya\Types;
 use Nette;
 use function array_map;
 use function is_array;

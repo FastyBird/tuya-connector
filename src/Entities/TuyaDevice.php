@@ -13,7 +13,7 @@
  * @date           25.04.22
  */
 
-namespace FastyBird\TuyaConnector\Entities;
+namespace FastyBird\Connector\Tuya\Entities;
 
 use Doctrine\ORM\Mapping as ORM;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;

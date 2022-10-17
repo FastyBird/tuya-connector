@@ -13,10 +13,10 @@
  * @date           25.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\Metadata\Entities as MetadataEntities;
-use FastyBird\TuyaConnector\Types;
 
 /**
  * Local devices client factory

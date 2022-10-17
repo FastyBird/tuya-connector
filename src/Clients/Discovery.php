@@ -13,17 +13,17 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
 use Evenement;
+use FastyBird\Connector\Tuya\API;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
-use FastyBird\TuyaConnector\API;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
 use Psr\Log;

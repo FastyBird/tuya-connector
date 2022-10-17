@@ -13,11 +13,11 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Connector;
+namespace FastyBird\Connector\Tuya\Connector;
 
+use FastyBird\Connector\Tuya\Connector;
 use FastyBird\DevicesModule\Connectors as DevicesModuleConnectors;
 use FastyBird\Metadata\Entities as MetadataEntities;
-use FastyBird\TuyaConnector\Connector;
 
 /**
  * Connector service executor factory

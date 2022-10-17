@@ -13,16 +13,16 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\TuyaConnector\API;
+namespace FastyBird\Connector\Tuya\API;
 
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use function strval;
 
@@ -54,6 +54,11 @@ final class OpenApiFactory
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function create(MetadataEntities\DevicesModule\Connector $connector): OpenApi
 	{

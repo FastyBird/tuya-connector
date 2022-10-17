@@ -13,7 +13,7 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Exceptions;
+namespace FastyBird\Connector\Tuya\Exceptions;
 
 use RuntimeException as PHPRuntimeException;
 

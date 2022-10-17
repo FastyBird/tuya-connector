@@ -13,9 +13,9 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\Messages;
+namespace FastyBird\Connector\Tuya\Entities\Messages;
 
-use FastyBird\TuyaConnector\Types;
+use FastyBird\Connector\Tuya\Types;
 use Nette;
 use Ramsey\Uuid;
 use function array_map;

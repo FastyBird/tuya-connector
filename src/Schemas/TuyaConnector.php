@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /**
- * TuyaConnector.php
+ * Tuya.php
  *
  * @license        More in LICENSE.md
  * @copyright      https://www.fastybird.com
@@ -13,11 +13,11 @@
  * @date           25.04.22
  */
 
-namespace FastyBird\TuyaConnector\Schemas;
+namespace FastyBird\Connector\Tuya\Schemas;
 
+use FastyBird\Connector\Tuya\Entities;
 use FastyBird\DevicesModule\Schemas as DevicesModuleSchemas;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector\Entities;
 
 /**
  * Tuya connector entity schema

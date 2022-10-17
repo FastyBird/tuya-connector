@@ -13,10 +13,10 @@
  * @date           04.09.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\Messages;
+namespace FastyBird\Connector\Tuya\Entities\Messages;
 
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use function is_scalar;
 use function strval;

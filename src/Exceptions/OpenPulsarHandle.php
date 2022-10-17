@@ -13,7 +13,7 @@
  * @date           04.09.22
  */
 
-namespace FastyBird\TuyaConnector\Exceptions;
+namespace FastyBird\Connector\Tuya\Exceptions;
 
 use RuntimeException;
 

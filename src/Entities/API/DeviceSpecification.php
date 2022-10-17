@@ -13,7 +13,7 @@
  * @date           29.04.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\API;
+namespace FastyBird\Connector\Tuya\Entities\API;
 
 use Nette;
 use function array_map;

@@ -13,10 +13,10 @@
  * @date           25.04.22
  */
 
-namespace FastyBird\TuyaConnector\Hydrators;
+namespace FastyBird\Connector\Tuya\Hydrators;
 
+use FastyBird\Connector\Tuya\Entities;
 use FastyBird\DevicesModule\Hydrators as DevicesModuleHydrators;
-use FastyBird\TuyaConnector\Entities;
 
 /**
  * Tuya device entity hydrator

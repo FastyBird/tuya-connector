@@ -13,11 +13,12 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Commands;
+namespace FastyBird\Connector\Tuya\Commands;
 
+use FastyBird\Connector\Tuya\Entities;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
-use FastyBird\TuyaConnector\Entities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use Psr\Log;
 use Ramsey\Uuid;
 use Symfony\Component\Console;
@@ -86,7 +87,12 @@ class Execute extends Console\Command\Command
 
 	/**
 	 * @throws Console\Exception\ExceptionInterface
-	 * @throws Metadata\Exceptions\FileNotFound
+	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	protected function execute(Input\InputInterface $input, Output\OutputInterface $output): int
 	{

@@ -13,15 +13,15 @@
  * @date           05.09.22
  */
 
-namespace FastyBird\TuyaConnector\Subscribers;
+namespace FastyBird\Connector\Tuya\Subscribers;
 
 use Doctrine\Common;
 use Doctrine\ORM;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
 

@@ -13,7 +13,7 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
 /**
  * Base client service

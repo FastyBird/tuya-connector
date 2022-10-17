@@ -13,9 +13,16 @@
  * @date           25.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
 use DateTimeInterface;
+use FastyBird\Connector\Tuya;
+use FastyBird\Connector\Tuya\API;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
@@ -24,13 +31,6 @@ use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector;
-use FastyBird\TuyaConnector\API;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use InvalidArgumentException;
 use Nette;
 use Nette\Utils;
@@ -114,6 +114,11 @@ final class Cloud implements Client
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function __construct(
 		private readonly MetadataEntities\DevicesModule\Connector $connector,
@@ -140,6 +145,11 @@ final class Cloud implements Client
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws InvalidArgumentException
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function connect(): void
 	{
@@ -633,6 +643,11 @@ final class Cloud implements Client
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function handleWsMessage(string $message): void
 	{
@@ -920,6 +935,11 @@ final class Cloud implements Client
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function buildWsTopicUrl(): string
 	{
@@ -941,6 +961,11 @@ final class Cloud implements Client
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function generatePassword(): string
 	{
@@ -974,7 +999,7 @@ final class Cloud implements Client
 	{
 		try {
 			$schema = Utils\FileSystem::read(
-				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+				Tuya\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
 			);
 
 		} catch (Nette\IOException) {

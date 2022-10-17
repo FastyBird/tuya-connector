@@ -13,7 +13,7 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\API;
+namespace FastyBird\Connector\Tuya\Entities\API;
 
 /**
  * Tuya base message data entity interface

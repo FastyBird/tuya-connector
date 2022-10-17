@@ -13,16 +13,16 @@
  * @date           04.09.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers\Messages;
+namespace FastyBird\Connector\Tuya\Consumers\Messages;
 
+use FastyBird\Connector\Tuya\Consumers\Consumer;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Helpers;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
-use FastyBird\TuyaConnector\Consumers\Consumer;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Helpers;
 use IPub\DoctrineOrmQuery\Exceptions as DoctrineOrmQueryExceptions;
 use Nette;
 use Psr\Log;
@@ -60,6 +60,11 @@ final class State implements Consumer
 	 * @throws DoctrineOrmQueryExceptions\InvalidStateException
 	 * @throws DoctrineOrmQueryExceptions\QueryException
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function consume(Entities\Messages\Entity $entity): bool
 	{

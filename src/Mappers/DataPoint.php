@@ -13,7 +13,7 @@
  * @date           04.09.22
  */
 
-namespace FastyBird\TuyaConnector\Mappers;
+namespace FastyBird\Connector\Tuya\Mappers;
 
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
@@ -50,6 +50,11 @@ final class DataPoint
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function findProperty(
 		Uuid\UuidInterface $connector,
@@ -79,6 +84,11 @@ final class DataPoint
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function loadProperty(
 		Uuid\UuidInterface $connector,

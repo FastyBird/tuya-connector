@@ -13,17 +13,18 @@
  * @date           31.08.22
  */
 
-namespace FastyBird\TuyaConnector\API;
+namespace FastyBird\Connector\Tuya\API;
 
 use DateTimeInterface;
 use Evenement;
+use FastyBird\Connector\Tuya;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
-use FastyBird\TuyaConnector;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
 use Psr\Log;
@@ -579,6 +580,9 @@ final class LocalApi implements Evenement\EventEmitterInterface
 
 	/**
 	 * @throws Exceptions\LocalApiCall
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function decodePayload(string $data): Entities\API\DeviceRawMessage|null
 	{
@@ -954,7 +958,7 @@ final class LocalApi implements Evenement\EventEmitterInterface
 	{
 		try {
 			$schema = Utils\FileSystem::read(
-				TuyaConnector\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
+				Tuya\Constants::RESOURCES_FOLDER . DIRECTORY_SEPARATOR . $schemaFilename,
 			);
 
 		} catch (Nette\IOException) {

@@ -13,10 +13,10 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers;
+namespace FastyBird\Connector\Tuya\Consumers;
 
+use FastyBird\Connector\Tuya\Entities;
 use FastyBird\Metadata;
-use FastyBird\TuyaConnector\Entities;
 use Nette;
 use Psr\Log;
 use SplObjectStorage;

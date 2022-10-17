@@ -1,13 +1,13 @@
 <?php declare(strict_types = 1);
 
-namespace Tests\Cases\Unit\DI;
+namespace FastyBird\Connector\Tuya\Tests\Cases\Unit\DI;
 
-use FastyBird\TuyaConnector\Hydrators;
-use FastyBird\TuyaConnector\Schemas;
+use FastyBird\Connector\Tuya\Hydrators;
+use FastyBird\Connector\Tuya\Schemas;
+use FastyBird\Connector\Tuya\Tests\Cases\Unit\BaseTestCase;
 use Nette;
-use Tests\Cases\Unit\BaseTestCase;
 
-final class ServicesTest extends BaseTestCase
+final class TuyaExtensionTest extends BaseTestCase
 {
 
 	/**

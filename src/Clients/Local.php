@@ -13,9 +13,15 @@
  * @date           25.08.22
  */
 
-namespace FastyBird\TuyaConnector\Clients;
+namespace FastyBird\Connector\Tuya\Clients;
 
 use DateTimeInterface;
+use FastyBird\Connector\Tuya\API;
+use FastyBird\Connector\Tuya\Consumers;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Helpers;
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
@@ -23,12 +29,6 @@ use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
 use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector\API;
-use FastyBird\TuyaConnector\Consumers;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Helpers;
-use FastyBird\TuyaConnector\Types;
 use Nette;
 use Nette\Utils;
 use Psr\Log;
@@ -100,6 +100,11 @@ final class Local implements Client
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	public function connect(): void
 	{
@@ -417,6 +422,11 @@ final class Local implements Client
 	/**
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function createDeviceClient(MetadataEntities\DevicesModule\Device $deviceItem): API\LocalApi
 	{

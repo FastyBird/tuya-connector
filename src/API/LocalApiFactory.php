@@ -13,11 +13,11 @@
  * @date           05.09.22
  */
 
-namespace FastyBird\TuyaConnector\API;
+namespace FastyBird\Connector\Tuya\API;
 
+use FastyBird\Connector\Tuya\Types;
 use FastyBird\DateTimeFactory;
 use FastyBird\Metadata\Schemas as MetadataSchemas;
-use FastyBird\TuyaConnector\Types;
 use Psr\Log;
 use React\EventLoop;
 

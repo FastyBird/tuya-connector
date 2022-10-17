@@ -13,9 +13,9 @@
  * @date           24.08.22
  */
 
-namespace FastyBird\TuyaConnector\Entities\Messages;
+namespace FastyBird\Connector\Tuya\Entities\Messages;
 
-use FastyBird\TuyaConnector\Types;
+use FastyBird\Connector\Tuya\Types;
 
 /**
  * Tuya base message data entity interface

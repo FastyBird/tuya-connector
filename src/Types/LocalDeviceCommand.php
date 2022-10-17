@@ -13,7 +13,7 @@
  * @date           07.09.22
  */
 
-namespace FastyBird\TuyaConnector\Types;
+namespace FastyBird\Connector\Tuya\Types;
 
 use Consistence;
 use function strval;

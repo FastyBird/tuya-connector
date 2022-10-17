@@ -13,10 +13,10 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\TuyaConnector\API;
+namespace FastyBird\Connector\Tuya\API;
 
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
 use Nette\Utils;
 use phpDocumentor;
 use ReflectionClass;

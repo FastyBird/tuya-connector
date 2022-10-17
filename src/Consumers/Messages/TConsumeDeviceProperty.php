@@ -13,19 +13,20 @@
  * @date           31.08.22
  */
 
-namespace FastyBird\TuyaConnector\Consumers\Messages;
+namespace FastyBird\Connector\Tuya\Consumers\Messages;
 
 use Doctrine\DBAL;
+use FastyBird\Connector\Tuya\Entities;
+use FastyBird\Connector\Tuya\Exceptions;
+use FastyBird\Connector\Tuya\Helpers;
 use FastyBird\DevicesModule\Entities as DevicesModuleEntities;
 use FastyBird\DevicesModule\Exceptions as DevicesModuleExceptions;
 use FastyBird\DevicesModule\Models as DevicesModuleModels;
 use FastyBird\DevicesModule\Queries as DevicesModuleQueries;
 use FastyBird\Metadata;
 use FastyBird\Metadata\Entities as MetadataEntities;
+use FastyBird\Metadata\Exceptions as MetadataExceptions;
 use FastyBird\Metadata\Types as MetadataTypes;
-use FastyBird\TuyaConnector\Entities;
-use FastyBird\TuyaConnector\Exceptions;
-use FastyBird\TuyaConnector\Helpers;
 use Nette\Utils;
 use Psr\Log;
 use Ramsey\Uuid;
@@ -54,7 +55,12 @@ trait TConsumeDeviceProperty
 	 * @throws DevicesModuleExceptions\InvalidState
 	 * @throws Exceptions\InvalidState
 	 * @throws Exceptions\Runtime
-	 * @throws Metadata\Exceptions\FileNotFound
+	 * @throws MetadataExceptions\FileNotFound
+	 * @throws MetadataExceptions\InvalidArgument
+	 * @throws MetadataExceptions\InvalidData
+	 * @throws MetadataExceptions\InvalidState
+	 * @throws MetadataExceptions\Logic
+	 * @throws MetadataExceptions\MalformedInput
 	 */
 	private function setDeviceProperty(
 		Uuid\UuidInterface $deviceId,
