@@ -13,7 +13,7 @@
  * @date           27.08.22
  */
 
-namespace FastyBird\Connector\Tuya\Entities\API;
+namespace FastyBird\Connector\Tuya\Entities\Clients;
 
 use Nette;
 
