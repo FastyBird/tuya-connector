@@ -13,7 +13,7 @@
  * @date           09.07.23
  */
 
-namespace FastyBird\Connector\Tuya\API;
+namespace FastyBird\Connector\Tuya\Services;
 
 use GuzzleHttp;
 use InvalidArgumentException;

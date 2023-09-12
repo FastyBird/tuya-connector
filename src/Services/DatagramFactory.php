@@ -13,11 +13,12 @@
  * @date           14.08.23
  */
 
-namespace FastyBird\Connector\Tuya\Clients;
+namespace FastyBird\Connector\Tuya\Services;
 
 use Nette;
 use React\Datagram;
 use React\EventLoop;
+use React\Promise;
 
 /**
  * React datagram server factory
@@ -38,9 +39,9 @@ final class DatagramFactory
 	{
 	}
 
-	public function create(): Datagram\Factory
+	public function create(string $address, int $port): Promise\PromiseInterface
 	{
-		return new Datagram\Factory($this->eventLoop);
+		return (new Datagram\Factory($this->eventLoop))->createServer($address . ':' . $port);
 	}
 
 }
